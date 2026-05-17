@@ -1,13 +1,13 @@
-# Create sessions table
+# Create conversation_sessions table
 
-**Objective:** Create sessions table for multi-session continuity and context.
+**Objective:** Create conversation_sessions table for multi-session continuity and conversation history context.
 
 **Requirement Traceability:** Conversation Dynamics features (#15,#16)
 
 **Technical Specs:**
 - Class/Namespace: Laravel migration file
 - File path(s): database/migrations
-- Database tables: sessions
+- Database tables: conversation_sessions
 
 **Implementation Logic:**
 1. Validate request and input

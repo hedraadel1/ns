@@ -11,7 +11,38 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register Singleton Services
+        $this->app->singleton('nexus.memory', function ($app) {
+            return new \App\Services\Memory\MemoryService($app['cache'], $app['db']);
+        });
+
+        $this->app->singleton('nexus.ai', function ($app) {
+            return new \App\Services\AI\AIOrchestrationService($app['config']);
+        });
+
+        $this->app->singleton('nexus.whatsapp', function ($app) {
+            return new \App\Services\WhatsApp\WAHAService($app['config']);
+        });
+
+        $this->app->singleton('nexus.router', function ($app) {
+            return new \App\Services\Routing\MessageRouterService($app['cache']);
+        });
+
+        // Bind Interface implementations
+        $this->app->bind(
+            \App\Contracts\MemoryEngineContract::class,
+            \App\Services\Memory\MemoryEngine::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\AIEngineContract::class,
+            \App\Services\AI\AIEngine::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\IntentRouterContract::class,
+            \App\Services\Routing\IntentRouter::class
+        );
     }
 
     /**
@@ -19,6 +50,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Configure pagination
+        \Illuminate\Pagination\Paginator::useBootstrap();
+
+        // Register macros for common operations
+        $this->registerMacros();
+    }
+
+    /**
+     * Register helper macros
+     */
+    protected function registerMacros(): void
+    {
+        // Collection macros for common operations
+        \Illuminate\Support\Collection::macro('mapWithKeys', function (callable $callback) {
+            $result = [];
+            foreach ($this as $key => $value) {
+                $mapped = $callback($value, $key);
+                foreach ($mapped as $k => $v) {
+                    $result[$k] = $v;
+                }
+            }
+            return new self($result);
+        });
     }
 }

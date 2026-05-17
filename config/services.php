@@ -35,4 +35,31 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'url' => env('WHATSAPP_API_URL'),
+        'key' => env('WHATSAPP_API_KEY'),
+        'session_id' => env('WHATSAPP_SESSION_ID', 'default'),
+    ],
+
+    'pinecone' => [
+        'key' => env('PINECONE_API_KEY'),
+        'environment' => env('PINECONE_ENVIRONMENT'),
+        'index' => env('PINECONE_INDEX_NAME'),
+    ],
+
+    'ai' => [
+        'gemini' => [
+            'key' => env('GEMINI_API_KEY'),
+        ],
+        'openai' => [
+            'key' => env('OPENAI_API_KEY'),
+        ],
+        'anthropic' => [
+            'key' => env('ANTHROPIC_API_KEY'),
+        ],
+        'groq' => [
+            'key' => env('GROQ_API_KEY'),
+        ],
+    ],
+
 ];
