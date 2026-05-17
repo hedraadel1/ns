@@ -2,42 +2,235 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Workflow;
+use App\Services\WorkflowExecutor;
+use App\Services\WorkflowValidationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class WorkflowController extends Controller
 {
-    public function index()
+    public function __construct(
+        protected WorkflowExecutor $executor,
+        protected WorkflowValidationService $validator
+    ) {}
+
+    public function index(Request $request)
     {
-        return response()->json(['data' => []]);
+        $query = Workflow::query();
+
+        if ($request->has('status')) {
+            $query->byStatus($request->status);
+        }
+
+        if ($request->has('trigger_type')) {
+            $query->byTriggerType($request->trigger_type);
+        }
+
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $workflows = $query->with(['tasks'])->paginate($request->per_page ?? 20);
+
+        return response()->json($workflows);
     }
 
     public function store(Request $request)
     {
-        return response()->json(['message' => 'workflow created'], 201);
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'key' => 'required|string|max:255|unique:workflows,key',
+            'description' => 'nullable|string',
+            'steps' => 'required|array|min:1',
+            'steps.*.name' => 'required|string',
+            'steps.*.action' => 'required|string',
+            'trigger_type' => 'required|string|in:manual,scheduled,event,webhook',
+            'trigger_config' => 'nullable|array',
+            'settings' => 'nullable|array',
+            'metadata' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $workflowData = $validator->validated();
+        $validation = $this->validator->validateWorkflow($workflowData);
+
+        if (!$validation['valid']) {
+            return response()->json(['errors' => $validation['errors']], 422);
+        }
+
+        $workflow = Workflow::create($workflowData);
+
+        return response()->json(['data' => $workflow, 'message' => 'Workflow created successfully'], 201);
     }
 
-    public function show($id)
+    public function show(Workflow $workflow)
     {
-        return response()->json(['data' => ['id' => $id]]);
+        $workflow->load(['tasks']);
+
+        return response()->json([
+            'data' => $workflow,
+            'progress' => $workflow->progress,
+            'total_steps' => $workflow->total_steps,
+            'completed_steps' => $workflow->completed_steps,
+        ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Workflow $workflow)
     {
-        return response()->json(['message' => 'workflow updated', 'id' => $id]);
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'steps' => 'sometimes|array|min:1',
+            'steps.*.name' => 'required_with:steps|string',
+            'steps.*.action' => 'required_with:steps|string',
+            'trigger_type' => 'sometimes|string|in:manual,scheduled,event,webhook',
+            'trigger_config' => 'nullable|array',
+            'settings' => 'nullable|array',
+            'metadata' => 'nullable|array',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $updateData = $validator->validated();
+
+        if (isset($updateData['steps'])) {
+            $stepValidation = $this->validator->validateSteps($updateData['steps']);
+            if (!empty($stepValidation)) {
+                return response()->json(['errors' => $stepValidation], 422);
+            }
+        }
+
+        $workflow->update($updateData);
+
+        return response()->json(['data' => $workflow, 'message' => 'Workflow updated successfully']);
     }
 
-    public function destroy($id)
+    public function destroy(Workflow $workflow)
     {
-        return response()->json(['message' => 'workflow deleted', 'id' => $id]);
+        $workflow->update(['is_active' => false]);
+
+        return response()->json(['message' => 'Workflow deactivated successfully']);
     }
 
-    public function execute(Request $request, $id)
+    public function execute(Request $request, Workflow $workflow)
     {
-        return response()->json(['message' => 'workflow execution started', 'id' => $id]);
+        if ($workflow->isRunning()) {
+            return response()->json(['message' => 'Workflow is already running'], 409);
+        }
+
+        $context = $request->validate([
+            'context' => 'nullable|array',
+        ])['context'] ?? [];
+
+        try {
+            $result = $this->executor->execute($workflow, $context);
+
+            return response()->json([
+                'message' => 'Workflow execution completed',
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Workflow execution failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function getProgress($id)
+    public function getProgress(Workflow $workflow)
     {
-        return response()->json(['data' => ['id' => $id, 'progress' => 0]]);
+        $workflow->load(['tasks']);
+
+        return response()->json([
+            'data' => [
+                'id' => $workflow->id,
+                'name' => $workflow->name,
+                'status' => $workflow->status,
+                'status_label' => $workflow->status_label,
+                'progress' => $workflow->progress,
+                'total_steps' => $workflow->total_steps,
+                'completed_steps' => $workflow->completed_steps,
+                'execution_count' => $workflow->execution_count,
+                'success_rate' => $workflow->getSuccessRate(),
+                'last_executed_at' => $workflow->last_executed_at,
+                'step_results' => $this->executor->getStepResults(),
+            ]
+        ]);
+    }
+
+    public function getTemplates(Request $request)
+    {
+        $templates = $this->getWorkflowTemplates();
+
+        if ($request->has('category')) {
+            $templates = array_filter($templates, fn($t) => $t['category'] === $request->category);
+        }
+
+        return response()->json(['data' => array_values($templates)]);
+    }
+
+    protected function getWorkflowTemplates(): array
+    {
+        return [
+            [
+                'id' => 'contact-onboarding',
+                'name' => 'Contact Onboarding',
+                'description' => 'Automated workflow for new contact onboarding',
+                'category' => 'contacts',
+                'steps' => [
+                    ['name' => 'Create contact profile', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                    ['name' => 'Send welcome message', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                    ['name' => 'Log onboarding', 'action' => 'log', 'message' => 'Contact onboarded'],
+                ],
+            ],
+            [
+                'id' => 'daily-summary',
+                'name' => 'Daily Summary',
+                'description' => 'Generate daily summary of activities',
+                'category' => 'reporting',
+                'steps' => [
+                    ['name' => 'Collect daily data', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                    ['name' => 'Generate summary', 'action' => 'agent', 'agent_type' => 'reflection'],
+                    ['name' => 'Send notification', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                ],
+            ],
+            [
+                'id' => 'error-recovery',
+                'name' => 'Error Recovery',
+                'description' => 'Automated error detection and recovery',
+                'category' => 'maintenance',
+                'steps' => [
+                    ['name' => 'Detect error', 'action' => 'condition', 'condition' => ['field' => 'status', 'operator' => '==', 'value' => 'error']],
+                    ['name' => 'Retry operation', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                    ['name' => 'Alert if failed', 'action' => 'log', 'message' => 'Recovery failed'],
+                ],
+            ],
+            [
+                'id' => 'contact-analysis',
+                'name' => 'Contact Analysis',
+                'description' => 'Deep analysis of contact interactions',
+                'category' => 'analytics',
+                'steps' => [
+                    ['name' => 'Gather contact data', 'action' => 'agent', 'agent_type' => 'autonomous'],
+                    ['name' => 'Analyze sentiment', 'action' => 'agent', 'agent_type' => 'reflection'],
+                    ['name' => 'Generate insights', 'action' => 'agent', 'agent_type' => 'specialized'],
+                ],
+            ],
+        ];
     }
 }

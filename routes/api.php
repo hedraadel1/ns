@@ -73,13 +73,34 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('agents.status');
 
     /**
-     * Workflows Hub Routes
-     */
+       * Workflows Hub Routes
+       */
     Route::resource('workflows', \App\Http\Controllers\WorkflowController::class);
     Route::post('/workflows/{id}/execute', [\App\Http\Controllers\WorkflowController::class, 'execute'])
-        ->name('workflows.execute');
+       ->name('workflows.execute');
     Route::get('/workflows/{id}/progress', [\App\Http\Controllers\WorkflowController::class, 'getProgress'])
-        ->name('workflows.progress');
+       ->name('workflows.progress');
+    Route::get('/workflows/templates', [\App\Http\Controllers\WorkflowController::class, 'getTemplates'])
+       ->name('workflows.templates');
+
+    /**
+       * Tasks Hub Routes
+       */
+    Route::resource('tasks', \App\Http\Controllers\TaskController::class);
+    Route::post('/tasks/{id}/cancel', [\App\Http\Controllers\TaskController::class, 'cancel'])
+       ->name('tasks.cancel');
+    Route::post('/tasks/{id}/pause', [\App\Http\Controllers\TaskController::class, 'pause'])
+       ->name('tasks.pause');
+    Route::post('/tasks/{id}/resume', [\App\Http\Controllers\TaskController::class, 'resume'])
+       ->name('tasks.resume');
+    Route::get('/tasks/stats', [\App\Http\Controllers\TaskController::class, 'getStats'])
+       ->name('tasks.stats');
+    Route::get('/tasks/active', [\App\Http\Controllers\TaskController::class, 'getActive'])
+       ->name('tasks.active');
+    Route::get('/tasks/queue-stats', [\App\Http\Controllers\TaskController::class, 'getQueueStats'])
+       ->name('tasks.queue-stats');
+    Route::get('/tasks/routing-stats', [\App\Http\Controllers\TaskController::class, 'getRoutingStats'])
+       ->name('tasks.routing-stats');
 
     /**
      * Memory Hub Routes
@@ -91,11 +112,39 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('memories.index');
 
     /**
-     * AI Models Hub Routes
-     */
+      * AI Models Hub Routes
+      */
     Route::resource('ai-models', \App\Http\Controllers\AiModelController::class);
     Route::post('/ai-models/{id}/test', [\App\Http\Controllers\AiModelController::class, 'test'])
         ->name('ai-models.test');
+    Route::post('/ai-models/execute', [\App\Http\Controllers\AiModelController::class, 'execute'])
+        ->name('ai-models.execute');
+    Route::post('/ai-models/execute-with-fallback', [\App\Http\Controllers\AiModelController::class, 'executeWithFallback'])
+        ->name('ai-models.execute-with-fallback');
+    Route::post('/ai-models/select', [\App\Http\Controllers\AiModelController::class, 'selectModel'])
+        ->name('ai-models.select');
+    Route::post('/ai-models/optimize-cost', [\App\Http\Controllers\AiModelController::class, 'optimizeCost'])
+        ->name('ai-models.optimize-cost');
+    Route::post('/ai-models/route-quality', [\App\Http\Controllers\AiModelController::class, 'routeByQuality'])
+        ->name('ai-models.route-quality');
+    Route::post('/ai-models/route-speed', [\App\Http\Controllers\AiModelController::class, 'routeBySpeed'])
+        ->name('ai-models.route-speed');
+    Route::get('/ai-models/providers', [\App\Http\Controllers\AiModelController::class, 'providers'])
+        ->name('ai-models.providers');
+    Route::get('/ai-models/key-pool', [\App\Http\Controllers\AiModelController::class, 'keyPoolStatus'])
+        ->name('ai-models.key-pool');
+    Route::get('/ai-models/key-health', [\App\Http\Controllers\AiModelController::class, 'keyHealth'])
+        ->name('ai-models.key-health');
+    Route::get('/ai-models/rate-limits', [\App\Http\Controllers\AiModelController::class, 'rateLimitStatus'])
+        ->name('ai-models.rate-limits');
+    Route::get('/ai-models/rotation-schedule', [\App\Http\Controllers\AiModelController::class, 'rotationSchedule'])
+        ->name('ai-models.rotation-schedule');
+    Route::post('/ai-models/rotate-expired', [\App\Http\Controllers\AiModelController::class, 'rotateExpired'])
+        ->name('ai-models.rotate-expired');
+    Route::get('/ai-models/fallback-chain', [\App\Http\Controllers\AiModelController::class, 'fallbackChainStatus'])
+        ->name('ai-models.fallback-chain');
+    Route::get('/ai-models/budget', [\App\Http\Controllers\AiModelController::class, 'budgetStatus'])
+        ->name('ai-models.budget');
 
     /**
      * Settings Hub Routes
