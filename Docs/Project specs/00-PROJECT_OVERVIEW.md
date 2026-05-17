@@ -201,9 +201,6 @@ Multi-provider AI orchestration layer.
 ### External Services
 - **WAHA**: WhatsApp HTTP API for messaging
 - **Pinecone**: Vector database for semantic memory
-- **Mem0**: Advanced personalization memory
-- **Letta/MemGPT**: Infinite context management
-- **Zep**: AI assistant memory system
 
 ### Internal Systems
 - **MySQL**: Primary data storage

@@ -124,12 +124,9 @@ Nexus creates an AI replica that can:
 - **OpenAI** - Alternative Provider
 - **Anthropic** - Complex Reasoning
 - **Pinecone** - Vector Database
-- **Mem0** - Personalization Memory
 
 ### External Integrations
 - **WAHA** - WhatsApp HTTP API
-- **Letta/MemGPT** - Infinite Context
-- **Zep** - AI Assistant Memory
 
 ---
 

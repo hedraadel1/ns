@@ -125,14 +125,6 @@ This document provides a detailed breakdown of all project phases and tasks for 
 | 4.2.4 | Create memory merge/prune logic | 6 hours |
 | 4.2.5 | Implement memory summarization | 4 hours |
 
-### Task 4.3: Memory Integration
-| Sub-task | Description | Estimated Time |
-|----------|-------------|----------------|
-| 4.3.1 | Connect Mem0 integration | 6 hours |
-| 4.3.2 | Add Letta/MemGPT support | 6 hours |
-| 4.3.3 | Implement Zep integration | 4 hours |
-| 4.3.4 | Create memory sync jobs | 4 hours |
-
 ---
 
 ## Phase 5: Agents Hub (Weeks 7-9)

@@ -42,13 +42,17 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
     /**
      * Contacts Hub Routes
      */
-    Route::resource('contacts', \App\Http\Controllers\ContactController::class);
+    Route::post('/contacts/import', [\App\Http\Controllers\ContactController::class, 'import'])
+        ->name('contacts.import');
+    Route::get('/contacts/export', [\App\Http\Controllers\ContactController::class, 'export'])
+        ->name('contacts.export');
     Route::get('/contacts/{id}/memory', [\App\Http\Controllers\ContactController::class, 'getMemory'])
         ->name('contacts.memory');
     Route::get('/contacts/{id}/rules', [\App\Http\Controllers\ContactController::class, 'getRules'])
         ->name('contacts.rules');
     Route::get('/contacts/{id}/analytics', [\App\Http\Controllers\ContactController::class, 'getAnalytics'])
         ->name('contacts.analytics');
+    Route::resource('contacts', \App\Http\Controllers\ContactController::class);
 
     /**
      * Conversations Routes

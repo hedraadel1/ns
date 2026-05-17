@@ -286,9 +286,6 @@ This document contains all features for the Nexus project, organized by category
 |---------|---------|
 | WAHA | WhatsApp messaging |
 | Pinecone | Vector database |
-| Mem0 | Personalization memory |
-| Letta/MemGPT | Infinite context |
-| Zep | AI assistant memory |
 
 ### 8.2 Internal Systems
 | System | Purpose |
