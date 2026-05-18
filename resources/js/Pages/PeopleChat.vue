@@ -162,6 +162,7 @@ async function sendMessage() {
 
   const content = newMessage.value.trim()
   newMessage.value = ''
+  isLoading.value = true
 
   // Optimistically add message
   const tempId = Date.now()
@@ -193,6 +194,8 @@ async function sendMessage() {
   } catch (e) {
     const msg = messages.value.find(m => m.id === tempId)
     if (msg) msg.status = 'failed'
+  } finally {
+    isLoading.value = false
   }
 }
 

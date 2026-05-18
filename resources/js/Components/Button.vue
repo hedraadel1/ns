@@ -39,11 +39,11 @@ const props = defineProps({
   },
 })
 
-defineEmits(['click'])
+const emit = defineEmits(['click'])
 
 function handleClick(e) {
   if (!props.disabled && !props.loading) {
-    props.$emit('click', e)
+    emit('click', e)
   }
 }
 </script>

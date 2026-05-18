@@ -46,7 +46,7 @@ const props = defineProps({
   },
 })
 
-defineEmits(['suggestion', 'close'])
+const emit = defineEmits(['suggestion', 'close'])
 
 const suggestions = ref([])
 const loading = ref(false)
@@ -68,9 +68,22 @@ async function loadSuggestions() {
     const data = await res.json()
     if (data.success && data.data) {
       suggestions.value = data.data
+    } else {
+      // Show fallback with error notification
+      if (window.$toast) {
+        window.$toast.warning('Using default suggestions', 'Agent Assist')
+      }
+      suggestions.value = [
+        { type: 'reply', text: 'Thank you for reaching out. How can I help you today?', confidence: 0.9 },
+        { type: 'question', text: 'Could you provide more details about your request?', confidence: 0.8 },
+        { type: 'action', text: 'I will look into this and get back to you shortly.', confidence: 0.7 },
+      ]
     }
   } catch (e) {
-    // Fallback to placeholder suggestions
+    // Fallback to placeholder suggestions with error notification
+    if (window.$toast) {
+      window.$toast.error('Failed to load suggestions: ' + e.message, 'Agent Assist Error')
+    }
     suggestions.value = [
       { type: 'reply', text: 'Thank you for reaching out. How can I help you today?', confidence: 0.9 },
       { type: 'question', text: 'Could you provide more details about your request?', confidence: 0.8 },
@@ -82,7 +95,7 @@ async function loadSuggestions() {
 }
 
 function applySuggestion(suggestion) {
-  props.$emit('suggestion', suggestion.text || suggestion)
+  emit('suggestion', suggestion.text || suggestion)
 }
 </script>
 

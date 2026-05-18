@@ -25,7 +25,7 @@ const props = defineProps({
   },
 })
 
-defineEmits(['swipe-left', 'swipe-right', 'swipe-up', 'swipe-down', 'tap', 'long-press'])
+const emit = defineEmits(['swipe-left', 'swipe-right', 'swipe-up', 'swipe-down', 'tap', 'long-press'])
 
 const container = ref(null)
 const touchStart = ref({ x: 0, y: 0, time: 0 })
@@ -42,7 +42,7 @@ function onTouchStart(e) {
 
   // Long press detection (500ms)
   longPressTimer.value = setTimeout(() => {
-    props.$emit('long-press', {
+    emit('long-press', {
       x: touch.clientX,
       y: touch.clientY,
     })
@@ -77,7 +77,7 @@ function onTouchEnd() {
 
   // Check if it's a tap (minimal movement)
   if (absDeltaX < props.tapThreshold && absDeltaY < props.tapThreshold) {
-    props.$emit('tap', {
+    emit('tap', {
       x: touchStart.value.x,
       y: touchStart.value.y,
     })
@@ -89,18 +89,18 @@ function onTouchEnd() {
     // Horizontal swipe
     if (absDeltaX > props.swipeThreshold) {
       if (deltaX > 0) {
-        props.$emit('swipe-right')
+        emit('swipe-right')
       } else {
-        props.$emit('swipe-left')
+        emit('swipe-left')
       }
     }
   } else {
     // Vertical swipe
     if (absDeltaY > props.swipeThreshold) {
       if (deltaY > 0) {
-        props.$emit('swipe-down')
+        emit('swipe-down')
       } else {
-        props.$emit('swipe-up')
+        emit('swipe-up')
       }
     }
   }
@@ -109,7 +109,7 @@ function onTouchEnd() {
 function onClick(e) {
   // Fallback for non-touch devices
   if (!('ontouchstart' in window)) {
-    props.$emit('tap', {
+    emit('tap', {
       x: e.clientX,
       y: e.clientY,
     })

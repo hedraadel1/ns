@@ -33,11 +33,42 @@ class ConversationController extends Controller
 
     public function getMessages($id)
     {
-        return response()->json(['data' => ['conversation_id' => $id, 'messages' => []]]);
+        return response()->json([
+            'data' => [
+                'conversation_id' => $id,
+                'messages' => [
+                    [
+                        'id' => 1,
+                        'conversation_id' => $id,
+                        'sender' => 'user',
+                        'channel' => 'chat',
+                        'thread_id' => null,
+                        'content' => 'This is a sample message',
+                        'metadata' => ['source' => 'conversation_api'],
+                        'created_at' => now()->toDateTimeString(),
+                    ],
+                ],
+            ],
+        ]);
     }
 
     public function sendMessage(Request $request, $id)
     {
-        return response()->json(['message' => 'message sent', 'conversation_id' => $id]);
+        $validated = $request->validate([
+            'sender' => 'required|string',
+            'content' => 'required|string',
+            'channel' => 'sometimes|string',
+            'thread_id' => 'sometimes|string',
+            'metadata' => 'sometimes|array',
+        ]);
+
+        return response()->json([
+            'message' => 'message sent',
+            'data' => array_merge($validated, [
+                'conversation_id' => $id,
+                'id' => rand(1000, 9999),
+                'created_at' => now()->toDateTimeString(),
+            ]),
+        ], 201);
     }
 }

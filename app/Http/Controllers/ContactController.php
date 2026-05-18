@@ -115,10 +115,11 @@ class ContactController extends Controller
         return response()->json(['data' => ['contact_id' => $id, 'rules' => $contact->rules]]);
     }
 
-    public function getAnalytics($id)
+    public function getAnalytics(Request $request, $id)
     {
         $contact = Contact::findOrFail($id);
-        $analytics = $this->contactHubService->getContactAnalytics($contact);
+        $days = max(1, (int) $request->query('days', 7));
+        $analytics = $this->contactHubService->getContactAnalyticsWithOptions($contact, $days);
 
         return response()->json(['data' => ['contact_id' => $id, 'analytics' => $analytics]]);
     }

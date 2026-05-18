@@ -16,6 +16,7 @@ class TaskQueueService
 
     public function enqueue(AgentTask $task, array $options = []): AgentTask
     {
+        $id = $task->id;
         $task->update([
             'status' => 'pending',
             'metadata' => array_merge($task->metadata ?? [], [
@@ -24,10 +25,13 @@ class TaskQueueService
             ]),
         ]);
 
-        $this->queue[] = $task->id;
-        Log::info("Task enqueued: {$task->title} (ID: {$task->id})");
+        // ensure we operate on the fresh model instance
+        $fresh = AgentTask::find($id);
 
-        return $task;
+        $this->queue[] = $fresh->id;
+        Log::info("Task enqueued: {$fresh->title} (ID: {$fresh->id})");
+
+        return $fresh;
     }
 
     public function dequeue(): ?AgentTask
@@ -88,12 +92,24 @@ class TaskQueueService
 
     public function cancel(AgentTask $task): AgentTask
     {
+        $id = $task->id;
         $task->update(['status' => 'cancelled']);
 
-        $this->queue = array_filter($this->queue, fn($id) => $id !== $task->id);
-        $this->processing = array_filter($this->processing, fn($id) => $id !== $task->id);
+        $this->queue = array_filter($this->queue, fn($qid) => $qid !== $id);
+        $this->processing = array_filter($this->processing, fn($pid) => $pid !== $id);
 
-        Log::info("Task cancelled: {$task->title} (ID: {$task->id})");
+        $fresh = AgentTask::find($id);
+
+        if ($fresh) {
+            Log::info("Task cancelled: {$fresh->title} (ID: {$fresh->id})");
+            return $fresh;
+        }
+
+        Log::warning("Task cancelled but fresh model could not be retrieved", [
+            'id' => $id,
+            'original_task' => $task->toArray(),
+        ]);
+
         return $task;
     }
 

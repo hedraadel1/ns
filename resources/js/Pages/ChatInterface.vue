@@ -53,7 +53,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue'
-import QuickActions from './QuickActions.vue'
+import QuickActions from '../Components/QuickActions.vue'
 
 const messages = ref([])
 const newMessage = ref('')

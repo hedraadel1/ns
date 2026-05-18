@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use App\Events\MemoryIndexed;
+use App\Listeners\IndexMemory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,6 +55,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Configure pagination
         \Illuminate\Pagination\Paginator::useBootstrap();
+
+        // Register event listeners
+        Event::listen(MemoryIndexed::class, [IndexMemory::class, 'handle']);
 
         // Register macros for common operations
         $this->registerMacros();

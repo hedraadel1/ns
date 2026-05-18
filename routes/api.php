@@ -109,7 +109,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
     Route::get('/memories/search', [\App\Http\Controllers\MemoryController::class, 'search'])
         ->name('memories.search');
     Route::post('/memories/{id}/index', [\App\Http\Controllers\MemoryController::class, 'indexMemory'])
-        ->name('memories.index');
+        ->name('memories.indexMemory');
 
     /**
       * AI Models Hub Routes

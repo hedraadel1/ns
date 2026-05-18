@@ -15,4 +15,12 @@ abstract class TestCase extends BaseTestCase
 
         return $app;
     }
+
+    protected function migrateFreshUsing()
+    {
+        return [
+            '--force' => true,
+            '--no-interaction' => true,
+        ];
+    }
 }

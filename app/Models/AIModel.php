@@ -4,6 +4,8 @@ namespace App\Models;
 
 class AIModel extends BaseModel
 {
+    protected $table = 'ai_models';
+
     protected $fillable = [
         'name',
         'provider',

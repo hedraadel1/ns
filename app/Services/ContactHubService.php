@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 class ContactHubService
 {
@@ -112,13 +114,56 @@ class ContactHubService
 
     public function getContactAnalytics(Contact $contact): array
     {
-        return [
-            'type' => $contact->type,
-            'last_seen_at' => optional($contact->last_seen_at)->toDateTimeString(),
-            'memory_count' => $contact->memories()->count(),
-            'tag_count' => $contact->tags()->count(),
-            'rule_count' => $contact->rules()->count(),
-            'baseline' => $contact->metadata['emotional_baseline'] ?? 'neutral',
-        ];
+        // Default to 7-day time-series
+        return $this->getContactAnalyticsWithOptions($contact, 7);
+    }
+
+    public function getContactAnalyticsWithOptions(Contact $contact, int $days = 7): array
+    {
+        $cacheKey = "contact:{$contact->id}:analytics:{$days}";
+
+        return Cache::remember($cacheKey, 60, function () use ($contact, $days) {
+            $now = Carbon::now();
+            $start = $now->copy()->subDays($days - 1)->startOfDay();
+
+            $memoriesSeries = [];
+            $messagesSeries = [];
+            $conversationsSeries = [];
+
+            for ($i = 0; $i < $days; $i++) {
+                $day = $start->copy()->addDays($i);
+                $from = $day->copy()->startOfDay();
+                $to = $day->copy()->endOfDay();
+
+                $memoriesSeries[] = [
+                    'date' => $day->toDateString(),
+                    'count' => $contact->memories()->whereBetween('created_at', [$from, $to])->count(),
+                ];
+
+                $messagesSeries[] = [
+                    'date' => $day->toDateString(),
+                    'count' => $contact->conversations()->with('messages')->get()->flatMap->messages->whereBetween('sent_at', [$from, $to])->count(),
+                ];
+
+                $conversationsSeries[] = [
+                    'date' => $day->toDateString(),
+                    'count' => $contact->conversations()->whereBetween('created_at', [$from, $to])->count(),
+                ];
+            }
+
+            return [
+                'type' => $contact->type,
+                'last_seen_at' => optional($contact->last_seen_at)->toDateTimeString(),
+                'memory_count' => $contact->memories()->count(),
+                'tag_count' => $contact->tags()->count(),
+                'rule_count' => $contact->rules()->count(),
+                'baseline' => $contact->metadata['emotional_baseline'] ?? 'neutral',
+                'time_series' => [
+                    'memories' => $memoriesSeries,
+                    'messages' => $messagesSeries,
+                    'conversations' => $conversationsSeries,
+                ],
+            ];
+        });
     }
 }

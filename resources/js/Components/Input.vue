@@ -76,20 +76,20 @@ const props = defineProps({
   },
 })
 
-defineEmits(['update:modelValue', 'focus', 'blur'])
+const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
 
 const inputId = computed(() => props.id || `input-${Math.random().toString(36).substr(2, 9)}`)
 
 function onInput(e) {
-  props.$emit('update:modelValue', e.target.value)
+  emit('update:modelValue', e.target.value)
 }
 
 function onFocus(e) {
-  props.$emit('focus', e)
+  emit('focus', e)
 }
 
 function onBlur(e) {
-  props.$emit('blur', e)
+  emit('blur', e)
 }
 </script>
 

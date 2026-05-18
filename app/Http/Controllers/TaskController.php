@@ -44,6 +44,12 @@ class TaskController extends Controller
             });
         }
 
+        // Filter by metadata token (used for optimistic creation correlation)
+        if ($request->has('metadata_token')) {
+            $token = $request->metadata_token;
+            $query->where('metadata->client_token', $token);
+        }
+
         $tasks = $query->with(['agent', 'workflow'])
             ->orderBy('priority', 'desc')
             ->orderBy('created_at', 'desc')
@@ -73,6 +79,8 @@ class TaskController extends Controller
         $data['progress'] = 0;
 
         $task = AgentTask::create($data);
+        // reload to ensure fresh attributes (id, timestamps) are present
+        $task = AgentTask::find($task->id);
         $this->queue->enqueue($task);
 
         return response()->json(['data' => $task, 'message' => 'Task created and queued'], 201);
@@ -116,7 +124,7 @@ class TaskController extends Controller
 
     public function cancel(AgentTask $task)
     {
-        $this->queue->cancel($task);
+        $task = $this->queue->cancel($task);
         return response()->json(['data' => $task, 'message' => 'Task cancelled']);
     }
 

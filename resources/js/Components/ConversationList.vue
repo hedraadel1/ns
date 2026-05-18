@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -48,6 +48,13 @@ const emit = defineEmits(['update:modelValue', 'new-conversation'])
 
 const conversations = ref([])
 const activeId = ref(props.modelValue)
+
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    activeId.value = newValue
+  }
+)
 
 onMounted(() => {
   loadConversations()

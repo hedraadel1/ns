@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Events\MemoryIndexed;
+use App\Jobs\SyncMemoryJob;
+use App\Models\Contact;
 use App\Services\Memory\WorkingMemoryService;
 use App\Services\Memory\EpisodicMemoryService;
 use App\Services\Memory\SemanticMemoryService;
@@ -96,6 +99,23 @@ class MemoryController extends Controller
                         $validated['sender'] ?? 'user',
                         $validated['metadata'] ?? []
                     );
+
+                    if ($result && $this->semanticMemoryService) {
+                        $this->semanticMemoryService->store(
+                            $validated['contactId'],
+                            $validated['content'],
+                            array_merge($validated['metadata'] ?? [], ['source' => 'episodic'])
+                        );
+                    }
+
+                    if ($result && $contact = Contact::find($validated['contactId'])) {
+                        event(new MemoryIndexed(
+                            $contact,
+                            'episodic',
+                            ['content' => $validated['content']],
+                            $validated['metadata'] ?? []
+                        ));
+                    }
                     break;
                 case 'semantic':
                     if ($this->semanticMemoryService) {
@@ -104,6 +124,15 @@ class MemoryController extends Controller
                             $validated['content'],
                             $validated['metadata'] ?? []
                         );
+
+                        if ($result && $contact = Contact::find($validated['contactId'])) {
+                            event(new MemoryIndexed(
+                                $contact,
+                                'semantic',
+                                ['content' => $validated['content']],
+                                $validated['metadata'] ?? []
+                            ));
+                        }
                     }
                     break;
                 case 'structured':
@@ -114,6 +143,16 @@ class MemoryController extends Controller
                             $validated['data'] ?? [],
                             $validated['metadata'] ?? []
                         );
+
+                        if ($result && $contact = Contact::find($validated['contactId'])) {
+                            event(new MemoryIndexed(
+                                $contact,
+                                'structured',
+                                ['data' => $validated['data'] ?? []],
+                                $validated['metadata'] ?? []
+                            ));
+                            SyncMemoryJob::dispatch($validated['contactId'], 'structured');
+                        }
                     }
                     break;
                 case 'graph':
@@ -159,10 +198,10 @@ class MemoryController extends Controller
     public function show($id)
     {
         // For simplicity, we'll assume this is an episodic memory ID
-        // In a real implementation, we might need to determine the type from context
-        try {
-            $memory = $this->episodicMemoryService->retrieve($id, 1)->first();
-            
+                // In a real implementation, we might need to determine the type from context
+                try {
+                    $memory = $this->episodicMemoryService->retrieve((int) $id, 1)->first();
+
             if ($memory) {
                 return response()->json(['data' => $memory]);
             }
@@ -291,7 +330,7 @@ class MemoryController extends Controller
         // In a real implementation, we might need to determine the type from context
         try {
             $result = $this->episodicMemoryService->delete($id);
-            
+
             if ($result) {
                 return response()->json([
                     'message' => 'Memory deleted successfully',
@@ -352,12 +391,12 @@ class MemoryController extends Controller
                                 $limit,
                                 $offset
                             );
-                            
+
                             // Filter by query content (simple search)
                             $filtered = $episodicResults->filter(function ($memory) use ($query) {
                                 return stripos($memory->content ?? '', $query) !== false;
                             });
-                            
+
                             $results['episodic'] = $filtered->all();
                         }
                         break;
@@ -391,17 +430,17 @@ class MemoryController extends Controller
                                 null, // relatedType
                                 $limit
                             );
-                            
+
                             // Filter by query in label or properties
                             $filtered = array_filter($graphResults, function ($node) use ($query) {
                                 return stripos($node['label'] ?? '', $query) !== false ||
-                                       (is_array($node['properties']) && 
+                                       (is_array($node['properties']) &&
                                         array_filter($node['properties'], function ($value) use ($query) {
                                             return is_string($value) && stripos($value, $query) !== false;
                                         }) !== []
                                        );
                             });
-                            
+
                             $results['graph'] = array_values($filtered);
                         }
                         break;

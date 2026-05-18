@@ -23,20 +23,31 @@
         <h3>Agent Performance</h3>
         <div class="chart-placeholder">
           <div class="donut-chart">
-            <svg viewBox="0 0 36 36" class="donut">
-              <path
-                v-for="(segment, i) in agentPerformanceData"
-                :key="i"
-                :d="segment.path"
-                :fill="segment.color"
-              />
+            <svg viewBox="0 0 36 36" class="donut" aria-label="Agent performance chart">
+              <circle class="donut-track" cx="18" cy="18" r="15.9155"></circle>
+              <circle
+                v-for="segment in donutSegments"
+                :key="segment.label"
+                class="donut-segment"
+                cx="18"
+                cy="18"
+                r="15.9155"
+                fill="transparent"
+                :stroke="segment.color"
+                :stroke-dasharray="segment.dashArray"
+                :stroke-dashoffset="segment.dashOffset"
+              ></circle>
             </svg>
-            <div class="donut-center">{{ totalTasks }}</div>
+            <div class="donut-center">
+              <span class="donut-total">{{ totalTasks }}</span>
+              <span class="donut-label">Tasks</span>
+            </div>
           </div>
           <div class="chart-legend">
-            <div v-for="(segment, i) in agentPerformanceData" :key="i" class="legend-item">
+            <div v-for="segment in agentPerformanceData" :key="segment.label" class="legend-item">
               <span class="legend-color" :style="{ background: segment.color }"></span>
               <span class="legend-label">{{ segment.label }}</span>
+              <span class="legend-value">{{ segment.value }}%</span>
             </div>
           </div>
         </div>
@@ -94,6 +105,7 @@ const workflowStats = ref({
   completed: 0,
   failed: 0,
   pending: 0,
+  tasks: 0,
 })
 
 const messageVolumeData = ref([
@@ -112,26 +124,96 @@ const agentPerformanceData = ref([
   { label: 'Error', value: 10, color: '#f87171' },
 ])
 
+const responseTimeData = ref([42, 38, 36, 31, 34, 28, 24, 27, 22, 20, 18])
+
 const responseTimePoints = computed(() => {
-  const points = []
-  for (let i = 0; i <= 10; i++) {
-    const x = i * 10
-    const y = 50 - Math.random() * 30 - 10
-    points.push(`${x},${y}`)
-  }
-  return points.join(' ')
+  const values = responseTimeData.value.filter((value) => typeof value === 'number' && !Number.isNaN(value))
+  if (values.length === 0) return ''
+
+  const maxValue = Math.max(...values, 50)
+  return values
+    .map((value, index) => {
+      const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100
+      const y = 50 - ((value / maxValue) * 45)
+      return `${x},${y}`
+    })
+    .join(' ')
 })
 
 const totalTasks = computed(() => {
-  return agentPerformanceData.value.reduce((sum, s) => sum + s.value, 0)
+  if (workflowStats.value.tasks && Number.isFinite(workflowStats.value.tasks)) {
+    return workflowStats.value.tasks
+  }
+  return agentPerformanceData.value.reduce((sum, s) => sum + Number(s.value || 0), 0)
 })
 
+const donutSegments = computed(() => {
+  const circumference = 100
+  const totalValue = agentPerformanceData.value.reduce((sum, segment) => sum + Number(segment.value || 0), 0)
+  let offset = 0
+
+  return agentPerformanceData.value.map((segment) => {
+    const value = Number(segment.value || 0)
+    const length = totalValue > 0 ? (value / totalValue) * circumference : 0
+    const dashArray = `${length} ${Math.max(0, circumference - length)}`
+    const dashOffset = offset
+    offset += length
+    return {
+      ...segment,
+      dashArray,
+      dashOffset,
+    }
+  })
+})
+
+function normalizeMessageVolume(items) {
+  if (!Array.isArray(items)) return messageVolumeData.value
+  return items.map((entry, index) => ({
+    label: String(entry.label ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] ?? `Day ${index + 1}`),
+    height: Math.min(100, Math.max(0, Number(entry.height ?? entry.value ?? 0))),
+  }))
+}
+
+function normalizeAgentPerformance(items) {
+  if (!Array.isArray(items) || items.length === 0) return agentPerformanceData.value
+  return items.map((segment) => ({
+    label: String(segment.label || 'Unknown'),
+    value: Math.max(0, Number(segment.value ?? 0)),
+    color: String(segment.color || '#4ade80'),
+  }))
+}
+
+function normalizeResponseTimes(items) {
+  if (!Array.isArray(items) || items.length === 0) return responseTimeData.value
+  return items.map((value) => Number(value ?? 0)).filter((value) => Number.isFinite(value))
+}
+
 onMounted(() => {
-  // Placeholder: fetch real stats from API
-  fetch('/api/v1/stats/workflows')
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.data) workflowStats.value = data.data
+  fetch('/api/v1/stats/dashboard')
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data || typeof data !== 'object') return
+      const payload = data.data || data
+      if (!payload) return
+
+      if (payload.workflowStats) {
+        workflowStats.value = {
+          ...workflowStats.value,
+          ...payload.workflowStats,
+        }
+      }
+
+      if (payload.messageVolume) {
+        messageVolumeData.value = normalizeMessageVolume(payload.messageVolume)
+      }
+
+      if (payload.agentPerformance) {
+        agentPerformanceData.value = normalizeAgentPerformance(payload.agentPerformance)
+      }
+
+      if (payload.responseTimes) {
+        responseTimeData.value = normalizeResponseTimes(payload.responseTimes)
+      }
     })
     .catch(() => {})
 })
@@ -210,8 +292,16 @@ onMounted(() => {
   transform: rotate(-90deg);
 }
 
-.donut path {
-  stroke-width: 3;
+.donut-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3.5;
+}
+
+.donut-segment {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
 }
 
 .donut-center {
@@ -219,9 +309,24 @@ onMounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  color: #fff;
+}
+
+.donut-total {
   font-size: 1.25rem;
   font-weight: bold;
-  color: #fff;
+  line-height: 1;
+}
+
+.donut-label {
+  font-size: 0.625rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .chart-legend {
@@ -243,6 +348,12 @@ onMounted(() => {
   width: 12px;
   height: 12px;
   border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-value {
+  margin-left: auto;
+  color: #ccc;
 }
 
 .line-chart {

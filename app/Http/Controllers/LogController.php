@@ -98,9 +98,9 @@ class LogController extends Controller
      * @param int $id
      * @return JsonResponse
      */
-    public function show(int $id): JsonResponse
-    {
-        $log = Log::findOrFail($id);
+    public function show($id): JsonResponse
+       {
+             $log = Log::findOrFail((int) $id);
 
         return response()->json([
             'success' => true,
@@ -212,9 +212,9 @@ class LogController extends Controller
        * @param int $id
        * @return JsonResponse
        */
-    public function destroy(int $id): JsonResponse
-    {
-       $log = Log::findOrFail($id);
+    public function destroy($id): JsonResponse
+       {
+          $log = Log::findOrFail((int) $id);
        $log->delete();
 
        return response()->json([

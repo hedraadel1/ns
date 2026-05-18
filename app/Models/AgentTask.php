@@ -34,4 +34,9 @@ class AgentTask extends BaseModel
     {
         return $this->hasMany(TaskStep::class);
     }
+
+    public function workflow(): BelongsTo
+    {
+        return $this->belongsTo(Workflow::class);
+    }
 }

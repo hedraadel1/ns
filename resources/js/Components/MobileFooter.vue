@@ -22,7 +22,7 @@ const props = defineProps({
   },
 })
 
-defineEmits(['tab-change'])
+const emit = defineEmits(['tab-change'])
 
 const tabs = [
   { id: 'dashboard', label: 'Home', icon: '🏠' },
@@ -35,7 +35,7 @@ const tabs = [
 
 function onTabClick(tabId) {
   if (props.activeTab !== tabId) {
-    props.$emit('tab-change', tabId)
+    emit('tab-change', tabId)
   }
 }
 </script>

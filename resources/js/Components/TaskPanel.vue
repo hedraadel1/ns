@@ -5,7 +5,11 @@
       <span class="task-count">{{ activeTasks.length }} running</span>
     </div>
 
-    <div v-if="activeTasks.length === 0" class="empty-state">
+    <div v-if="error" class="error-state">
+      <p>{{ error }}</p>
+    </div>
+
+    <div v-else-if="activeTasks.length === 0" class="empty-state">
       <p>No active tasks.</p>
     </div>
 
@@ -41,6 +45,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const activeTasks = ref([])
+const error = ref('')
 let pollInterval = null
 
 onMounted(() => {
@@ -56,8 +61,25 @@ async function loadTasks() {
   try {
     const res = await fetch('/api/v1/tasks/active')
     const data = await res.json()
-    if (data.success) activeTasks.value = data.data
-  } catch (e) {}
+
+    if (data.success) {
+      activeTasks.value = Array.isArray(data.data) ? data.data : []
+      error.value = ''
+      return
+    }
+
+    activeTasks.value = []
+    error.value = data.message || 'Failed to load active tasks.'
+    if (window.$toast) {
+      window.$toast.error(error.value, 'Task Loading Error')
+    }
+  } catch (e) {
+    activeTasks.value = []
+    error.value = 'Unable to load active tasks.'
+    if (window.$toast) {
+      window.$toast.error(error.value, 'Task Loading Error')
+    }
+  }
 }
 
 function formatTime(timestamp) {
@@ -92,11 +114,22 @@ function formatTime(timestamp) {
   color: #888;
 }
 
-.empty-state {
+.empty-state,
+.error-state {
   text-align: center;
-  color: #666;
   padding: 1rem;
   font-size: 0.875rem;
+}
+
+.empty-state {
+  color: #666;
+}
+
+.error-state {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 6px;
 }
 
 .task-list {

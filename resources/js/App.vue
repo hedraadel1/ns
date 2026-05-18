@@ -1,244 +1,286 @@
 <template>
-  <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen }">
-    <!-- Sidebar Navigation -->
-    <Navigation
-      :active-tab="activeTab"
-      :sidebar-open="sidebarOpen"
-      @tab-change="onTabChange"
-      @toggle-sidebar="sidebarOpen = !sidebarOpen"
-    />
+  <div class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="mx-auto flex min-h-screen max-w-7xl flex-col lg:flex-row">
+      <Navigation
+        class="lg:w-80 lg:flex-shrink-0"
+        :tabs="hubTabs"
+        :active-tab="activeHub"
+        @select="setActiveHub"
+      />
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-      <!-- Top Bar -->
-      <header class="top-bar">
-        <button class="menu-toggle" @click="sidebarOpen = !sidebarOpen">
-          <span class="hamburger"></span>
-        </button>
-        <Breadcrumbs :items="breadcrumbs" />
-        <div class="top-bar-actions">
-          <button class="icon-btn" @click="toggleTheme" title="Toggle theme">
-            {{ isDark ? '☀️' : '🌙' }}
-          </button>
+      <div class="flex min-w-0 flex-1 flex-col border-t border-slate-800/70 lg:border-l lg:border-t-0">
+        <header class="border-b border-slate-800 bg-slate-900/90 px-5 py-4 backdrop-blur">
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">Shell navigation</p>
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-semibold text-white">{{ currentHub?.label ?? 'Hub' }}</h1>
+              <p class="mt-1 max-w-2xl text-sm text-slate-400">
+                {{ currentHub?.description ?? 'Select a hub to continue.' }}
+              </p>
+            </div>
+
+            <div class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+              {{ hubTabs.length }} hubs reachable
+            </div>
+          </div>
+        </header>
+
+        <div class="border-b border-slate-800 bg-slate-900/60 px-4 py-3">
+          <TabSystem :tabs="hubTabs" :active-tab="activeHub" @select="setActiveHub" />
         </div>
-      </header>
 
-      <!-- Tab Content -->
-      <div class="tab-content">
-        <TabSystem :active-tab="activeTab" @tab-change="onTabChange">
-          <!-- Dashboard Tab -->
-          <template #dashboard>
-            <DashboardView />
-          </template>
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+          <component
+            v-if="currentPageComponent"
+            :is="currentPageComponent"
+            :key="activeHub"
+          />
 
-          <!-- Chat Tab -->
-          <template #chat>
-            <ChatInterface />
-          </template>
+          <section
+            v-else
+            class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-amber-100"
+          >
+            <h2 class="text-lg font-semibold">Hub unavailable</h2>
+            <p class="mt-2 text-sm leading-6 text-amber-50/90">
+              The <span class="font-medium">{{ currentHub?.label ?? activeHub }}</span> hub does not have a page component yet.
+              Use one of the reachable hubs below or add a matching <code class="rounded bg-black/20 px-1 py-0.5 text-[0.8em]">*View.vue</code> file.
+            </p>
 
-          <!-- Contacts Tab -->
-          <template #contacts>
-            <ContactsView />
-          </template>
-
-          <!-- Agents Tab -->
-          <template #agents>
-            <AgentsView />
-          </template>
-
-          <!-- Workflows Tab -->
-          <template #workflows>
-            <WorkflowsView />
-          </template>
-
-          <!-- Settings Tab -->
-          <template #settings>
-            <SettingsView />
-          </template>
-        </TabSystem>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <button
+                v-for="tab in hubTabs"
+                :key="tab.key + '-fallback'"
+                type="button"
+                class="rounded-full border border-emerald-500/30 bg-slate-950/40 px-3 py-1.5 text-sm text-slate-100 transition hover:border-emerald-400 hover:text-white"
+                @click="setActiveHub(tab.key)"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          </section>
+        </main>
       </div>
-    </main>
-
-    <!-- Mobile Overlay -->
-    <div
-      v-if="sidebarOpen"
-      class="sidebar-overlay"
-      @click="sidebarOpen = false"
-    ></div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import Navigation from './Components/Navigation.vue'
-import TabSystem from './Components/TabSystem.vue'
-import DashboardView from './Pages/DashboardView.vue'
-import ChatInterface from './Pages/ChatInterface.vue'
-import ContactsView from './Pages/ContactsView.vue'
-import AgentsView from './Pages/AgentsView.vue'
-import WorkflowsView from './Pages/WorkflowsView.vue'
-import SettingsView from './Pages/SettingsView.vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import Navigation from './Components/Navigation.vue';
+import TabSystem from './Components/TabSystem.vue';
 
-const sidebarOpen = ref(false)
-const activeTab = ref('dashboard')
-const isDark = ref(true)
+const pageModules = import.meta.glob('./Pages/*View.vue');
+const hubQueryKey = 'hub';
 
-const breadcrumbs = computed(() => {
-  const labels = {
-    dashboard: 'Dashboard',
-    chat: 'Chat',
-    contacts: 'Contacts',
-    agents: 'Agents',
-    workflows: 'Workflows',
-    settings: 'Settings',
+const hubDefinitions = [
+  {
+    key: 'agents',
+    label: 'Agents',
+    icon: '🤖',
+    description: 'Manage agent personas, routing, and assistant behaviors.',
+    candidates: ['AgentsView.vue'],
+  },
+  {
+    key: 'workflows',
+    label: 'Workflows',
+    icon: '⚡',
+    description: 'Inspect and build automations that move work forward.',
+    candidates: ['WorkflowsView.vue'],
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    icon: '⚙️',
+    description: 'Tune account, system, and environment-wide preferences.',
+    candidates: ['SettingsView.vue'],
+  },
+  {
+    key: 'contacts',
+    label: 'Contacts',
+    icon: '👥',
+    description: 'Browse customer records and relationship context.',
+    candidates: ['ContactsView.vue'],
+  },
+  {
+    key: 'conversations',
+    label: 'Conversations',
+    icon: '💬',
+    description: 'Multi-channel communication and message management.',
+    candidates: ['ConversationsView.vue'],
+  },
+  {
+    key: 'logs',
+    label: 'Logs',
+    icon: '📜',
+    description: 'Review event streams, traces, and recent system activity.',
+    candidates: ['LogsView.vue'],
+  },
+  {
+    key: 'memory',
+    label: 'Memory',
+    icon: '🧠',
+    description: 'Inspect stored memories, context, and recall state.',
+    candidates: ['MemoryView.vue'],
+  },
+  {
+    key: 'nexus',
+    label: 'Nexus',
+    icon: '🧭',
+    description: 'Open the orchestration hub and shared coordination surface.',
+    candidates: ['NexusView.vue'],
+  },
+  {
+    key: 'ai-models',
+    label: 'AI Models',
+    icon: '🧪',
+    description: 'Compare available models and configure model defaults.',
+    candidates: ['AIModelsView.vue'],
+  },
+];
+
+const knownCandidateFiles = new Set(hubDefinitions.flatMap((hub) => hub.candidates));
+
+const resolveLoader = (candidates) => {
+  for (const fileName of candidates) {
+    const moduleKey = `./Pages/${fileName}`;
+    if (pageModules[moduleKey]) {
+      return pageModules[moduleKey];
+    }
   }
-  return [
-    { label: 'Home', href: '#' },
-    { label: labels[activeTab.value] || 'Dashboard', active: true },
-  ]
-})
 
-function onTabChange(tab) {
-  activeTab.value = tab
-  // Close sidebar on mobile after selection
-  if (window.innerWidth < 768) {
-    sidebarOpen.value = false
+  return null;
+};
+
+const labelFromFileName = (fileName) =>
+  fileName
+    .replace(/View\.vue$/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+
+const keyFromFileName = (fileName) =>
+  fileName
+    .replace(/View\.vue$/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[_\s]+/g, '-')
+    .toLowerCase();
+
+const iconFromKey = (key) => {
+  if (key.includes('log')) return '📜';
+  if (key.includes('memory')) return '🧠';
+  if (key.includes('contact')) return '👥';
+  if (key.includes('workflow')) return '⚡';
+  if (key.includes('agent')) return '🤖';
+  if (key.includes('setting')) return '⚙️';
+  if (key.includes('model')) return '🧪';
+  if (key.includes('nexus')) return '🧭';
+  return '▣';
+};
+
+const availableHubs = [
+  ...hubDefinitions
+    .map((definition) => ({
+      ...definition,
+      loader: resolveLoader(definition.candidates),
+    }))
+    .filter((definition) => definition.loader),
+  ...Object.keys(pageModules)
+    .map((moduleKey) => moduleKey.split('/').pop())
+    .filter((fileName) => fileName && !knownCandidateFiles.has(fileName) && /View\.vue$/.test(fileName))
+    .map((fileName) => ({
+      key: keyFromFileName(fileName),
+      label: labelFromFileName(fileName),
+      icon: iconFromKey(keyFromFileName(fileName)),
+      description: `${labelFromFileName(fileName)} hub`,
+      candidates: [fileName],
+      loader: pageModules[`./Pages/${fileName}`],
+    })),
+];
+
+const fallbackHub = availableHubs[0]?.key ?? hubDefinitions[0].key;
+const activeHub = ref(fallbackHub);
+
+const isValidHub = (value) => availableHubs.some((hub) => hub.key === value);
+
+const getHubFromLocation = () => {
+  if (typeof window === 'undefined') {
+    return fallbackHub;
   }
-}
 
-function toggleTheme() {
-  isDark.value = !isDark.value
-  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
-}
+  const url = new URL(window.location.href);
+  const queryHub = url.searchParams.get(hubQueryKey)?.trim();
+  if (isValidHub(queryHub)) {
+    return queryHub;
+  }
+
+  const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
+  const hashHub = rawHash.includes('=') ? rawHash.split('=').pop() : rawHash;
+  return isValidHub(hashHub) ? hashHub : fallbackHub;
+};
+
+const syncLocationToHub = (hubKey) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set(hubQueryKey, hubKey);
+  url.hash = hubKey;
+  window.history.replaceState({}, '', url);
+};
+
+const currentHub = computed(
+  () => availableHubs.find((hub) => hub.key === activeHub.value) ?? null,
+);
+
+const currentPageComponent = computed(() => {
+  const hub = currentHub.value;
+  if (!hub?.loader) {
+    return null;
+  }
+
+  return defineAsyncComponent(hub.loader);
+});
+
+const setActiveHub = (hubKey) => {
+  const nextHub = isValidHub(hubKey) ? hubKey : fallbackHub;
+  if (!nextHub || activeHub.value === nextHub) {
+    return;
+  }
+
+  activeHub.value = nextHub;
+  syncLocationToHub(nextHub);
+};
+
+const syncHubFromLocation = () => {
+  const nextHub = getHubFromLocation();
+  activeHub.value = nextHub;
+  if (typeof window !== 'undefined') {
+    syncLocationToHub(nextHub);
+  }
+};
 
 onMounted(() => {
-  // Check system preference
-  if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-    isDark.value = false
-    document.documentElement.setAttribute('data-theme', 'light')
+  syncHubFromLocation();
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hashchange', syncHubFromLocation);
   }
-})
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('hashchange', syncHubFromLocation);
+  }
+});
+
+const hubTabs = computed(() =>
+  availableHubs.map((hub) => ({
+    key: hub.key,
+    label: hub.label,
+    icon: hub.icon,
+    description: hub.description,
+  })),
+);
 </script>
-
-<style scoped>
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-  background: #0a0a0a;
-  color: #fff;
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  margin-left: 260px;
-  transition: margin-left 0.3s ease;
-}
-
-.app-shell:not(.sidebar-open) .main-content {
-  margin-left: 0;
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.menu-toggle {
-  display: none;
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-}
-
-.hamburger {
-  display: block;
-  width: 20px;
-  height: 2px;
-  background: #fff;
-  position: relative;
-}
-
-.hamburger::before,
-.hamburger::after {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 2px;
-  background: #fff;
-  left: 0;
-}
-
-.hamburger::before { top: -6px; }
-.hamburger::after { top: 6px; }
-
-.top-bar-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-
-.tab-content {
-  flex: 1;
-  padding: 1.5rem;
-  overflow-y: auto;
-}
-
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 40;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .menu-toggle {
-    display: block;
-  }
-
-  .main-content {
-    margin-left: 0 !important;
-  }
-
-  .sidebar-overlay {
-    display: block;
-  }
-
-  .tab-content {
-    padding: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .top-bar {
-    padding: 0.5rem 1rem;
-  }
-
-  .tab-content {
-    padding: 0.75rem;
-  }
-}
-</style>

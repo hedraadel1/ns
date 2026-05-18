@@ -1,201 +1,97 @@
 <template>
-  <nav class="sidebar" :class="{ open: sidebarOpen }">
-    <div class="sidebar-header">
-      <h1 class="logo">Nexus</h1>
-      <button class="close-btn" @click="$emit('toggle-sidebar')">✕</button>
+  <aside class="flex h-full flex-col border-r border-slate-800 bg-slate-950/95">
+    <div class="border-b border-slate-800 px-5 py-5">
+      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">Navigation</p>
+      <h2 class="mt-2 text-lg font-semibold text-white">Hubs</h2>
+      <p class="mt-1 text-sm text-slate-400">Jump directly to any reachable workspace.</p>
     </div>
 
-    <div class="nav-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        :class="['nav-tab', { active: activeTab === tab.id }]"
-        @click="onTabClick(tab.id)"
-        :title="tab.label"
-      >
-        <span class="tab-icon">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
-      </button>
-    </div>
-
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="avatar">A</div>
-        <div class="user-details">
-          <span class="user-name">Admin</span>
-          <span class="user-role">Administrator</span>
-        </div>
-      </div>
-    </div>
-  </nav>
+    <nav class="flex-1 overflow-y-auto px-3 py-4">
+      <ul class="space-y-2">
+        <li v-for="tab in displayTabs" :key="tab.key ?? tab.id">
+          <button
+            type="button"
+            class="flex w-full items-start justify-between rounded-xl border px-4 py-3 text-left transition"
+            :class="resolveTabKey(tab) === currentTab
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-white shadow-[0_0_0_1px_rgba(16,185,129,0.12)]'
+              : 'border-slate-800 bg-slate-900/50 text-slate-300 hover:border-slate-700 hover:bg-slate-900 hover:text-white'"
+            @click="activate(resolveTabKey(tab))"
+          >
+            <span class="flex min-w-0 items-start gap-3">
+              <span
+                v-if="tab.icon"
+                class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm"
+              >
+                {{ tab.icon }}
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold">{{ tab.label }}</span>
+                <span v-if="tab.description" class="mt-1 block text-xs leading-5 text-slate-400">
+                  {{ tab.description }}
+                </span>
+              </span>
+            </span>
+            <span
+              class="ml-3 mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold"
+              :class="resolveTabKey(tab) === currentTab
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-slate-800 text-slate-400'"
+            >
+              {{ indexFor(resolveTabKey(tab)) }}
+            </span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </aside>
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { computed } from 'vue';
 
 const props = defineProps({
+  tabs: {
+    type: Array,
+    default: () => [],
+  },
+  items: {
+    type: Array,
+    default: () => [],
+  },
   activeTab: {
     type: String,
-    default: 'dashboard',
+    default: '',
   },
-  sidebarOpen: {
-    type: Boolean,
-    default: false,
+  modelValue: {
+    type: String,
+    default: '',
   },
-})
+});
 
-defineEmits(['tab-change', 'toggle-sidebar'])
+const emit = defineEmits(['select', 'change', 'update:activeTab', 'update:modelValue']);
 
-const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'contacts', label: 'Contacts', icon: '👥' },
-  { id: 'agents', label: 'Agents', icon: '🤖' },
-  { id: 'workflows', label: 'Workflows', icon: '⚡' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
-]
+const displayTabs = computed(() => (props.tabs.length ? props.tabs : props.items));
+const currentTab = computed(() => props.activeTab || props.modelValue || resolveTabKey(displayTabs.value[0] || {}));
 
-function onTabClick(tabId) {
-  if (props.activeTab !== tabId) {
-    emit('tab-change', tabId)
+const resolveTabKey = (tab) => tab?.key ?? tab?.id ?? '';
+
+const activate = (tabKey) => {
+  if (!tabKey) {
+    return;
   }
-}
+
+  emit('select', tabKey);
+  emit('change', tabKey);
+  emit('update:activeTab', tabKey);
+  emit('update:modelValue', tabKey);
+
+  if (typeof window !== 'undefined') {
+    window.location.hash = tabKey;
+  }
+};
+
+const indexFor = (tabKey) => {
+  const position = displayTabs.value.findIndex((tab) => resolveTabKey(tab) === tabKey);
+  return position >= 0 ? String(position + 1).padStart(2, '0') : '--';
+};
 </script>
-
-<style scoped>
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 260px;
-  height: 100vh;
-  background: #111;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  z-index: 50;
-  transition: transform 0.3s ease;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logo {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #4ade80;
-  margin: 0;
-}
-
-.close-btn {
-  display: none;
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0.25rem;
-}
-
-.nav-tabs {
-  flex: 1;
-  padding: 0.75rem 0;
-  overflow-y: auto;
-}
-
-.nav-tab {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 1.25rem;
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 0.9375rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-}
-
-.nav-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
-
-.nav-tab.active {
-  background: rgba(74, 222, 128, 0.1);
-  color: #4ade80;
-  border-right: 2px solid #4ade80;
-}
-
-.tab-icon {
-  font-size: 1.125rem;
-  width: 24px;
-  text-align: center;
-}
-
-.tab-label {
-  flex: 1;
-}
-
-.sidebar-footer {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 0.875rem;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #fff;
-}
-
-.user-role {
-  font-size: 0.75rem;
-  color: #888;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .close-btn {
-    display: block;
-  }
-}
-</style>
