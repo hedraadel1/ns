@@ -19,7 +19,7 @@ class AgentTaskFactory extends Factory
             'agent_id' => Agent::factory(),
             'title' => fake()->sentence(5),
             'description' => fake()->paragraph(),
-            'status' => fake()->randomElement(['pending', 'in_progress', 'completed']),
+            'status' => fake()->randomElement(['pending', 'running', 'paused', 'completed', 'failed', 'cancelled']),
             'priority' => fake()->numberBetween(10, 100),
             'progress' => fake()->numberBetween(0, 100),
             'due_at' => now()->addDays(fake()->numberBetween(1, 14)),

@@ -18,10 +18,12 @@ class AgentLifecycleService
 
     public function initialize(Agent $agent): Agent
     {
-        $agent->setRunning();
-        $agent->incrementExecution();
+        $agent->status = Agent::STATUS_RUNNING;
+        $agent->execution_count += 1;
+        $agent->last_executed_at = now();
+        $agent->save();
         Log::info("Agent initialized: {$agent->name} (ID: {$agent->id})");
-        return $agent->fresh();
+        return $agent;
     }
 
     public function transition(Agent $agent, string $newStatus): Agent

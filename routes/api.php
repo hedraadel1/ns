@@ -147,29 +147,47 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('ai-models.budget');
 
     /**
-     * Settings Hub Routes
-     */
+       * Settings Hub Routes
+       */
     Route::group(['prefix' => 'settings'], function () {
-        Route::get('/', [\App\Http\Controllers\SettingController::class, 'index'])
-            ->name('settings.index');
-        Route::put('/', [\App\Http\Controllers\SettingController::class, 'update'])
-            ->name('settings.update');
-        Route::post('/reset', [\App\Http\Controllers\SettingController::class, 'reset'])
-            ->name('settings.reset');
+       Route::get('/', [\App\Http\Controllers\SettingController::class, 'index'])
+             ->name('settings.index');
+       Route::post('/', [\App\Http\Controllers\SettingController::class, 'store'])
+             ->name('settings.store');
+       Route::get('/grouped', [\App\Http\Controllers\SettingController::class, 'grouped'])
+             ->name('settings.grouped');
+       Route::get('/public', [\App\Http\Controllers\SettingController::class, 'publicSettings'])
+             ->name('settings.public');
+       Route::put('/bulk', [\App\Http\Controllers\SettingController::class, 'bulkUpdate'])
+             ->name('settings.bulk-update');
+       Route::get('/{key}', [\App\Http\Controllers\SettingController::class, 'show'])
+             ->name('settings.show');
+       Route::put('/{key}', [\App\Http\Controllers\SettingController::class, 'update'])
+             ->name('settings.update');
+       Route::delete('/{key}', [\App\Http\Controllers\SettingController::class, 'destroy'])
+             ->name('settings.destroy');
     });
 
     /**
      * Logs Hub Routes
      */
     Route::group(['prefix' => 'logs'], function () {
-        Route::get('/', [\App\Http\Controllers\LogController::class, 'index'])
-            ->name('logs.index');
-        Route::get('/{id}', [\App\Http\Controllers\LogController::class, 'show'])
-            ->name('logs.show');
-        Route::delete('/{id}', [\App\Http\Controllers\LogController::class, 'destroy'])
-            ->name('logs.destroy');
-        Route::post('/clear', [\App\Http\Controllers\LogController::class, 'clear'])
-            ->name('logs.clear');
+       Route::get('/', [\App\Http\Controllers\LogController::class, 'index'])
+             ->name('logs.index');
+       Route::get('/{id}', [\App\Http\Controllers\LogController::class, 'show'])
+             ->name('logs.show');
+       Route::delete('/{id}', [\App\Http\Controllers\LogController::class, 'destroy'])
+             ->name('logs.destroy');
+       Route::post('/clear', [\App\Http\Controllers\LogController::class, 'clear'])
+             ->name('logs.clear');
+       Route::get('/stats', [\App\Http\Controllers\LogController::class, 'stats'])
+             ->name('logs.stats');
+       Route::get('/levels', [\App\Http\Controllers\LogController::class, 'levels'])
+             ->name('logs.levels');
+       Route::get('/categories', [\App\Http\Controllers\LogController::class, 'categories'])
+             ->name('logs.categories');
+       Route::get('/errors', [\App\Http\Controllers\LogController::class, 'errors'])
+             ->name('logs.errors');
     });
 
     /**

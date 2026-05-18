@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Workflow extends BaseModel
 {
+    protected $appends = ['progress', 'total_steps', 'completed_steps'];
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_ACTIVE = 'active';
     public const STATUS_RUNNING = 'running';
@@ -125,7 +127,7 @@ class Workflow extends BaseModel
         $this->update(['status' => self::STATUS_CANCELLED]);
     }
 
-    public function scopeByStatus($query, string $status)
+    public function scopeByStatus($query, $status)
     {
         return $query->where('status', $status);
     }
