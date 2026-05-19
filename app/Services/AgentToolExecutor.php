@@ -4,14 +4,14 @@ namespace App\Services;
 
 use App\Models\Agent;
 use App\Models\AgentTask;
-use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 
 class AgentToolExecutor
 {
     protected AgentToolRegistry $registry;
     protected array $executionHistory = [];
 
-    public function __construct(AgentToolRegistry $registry)
+    public function __construct(AgentToolRegistry $registry, protected LogService $logService)
     {
         $this->registry = $registry;
     }
@@ -38,8 +38,12 @@ class AgentToolExecutor
                 'executed_at' => now()->toISOString(),
             ];
 
-            Log::info("Tool executed successfully: {$toolName} by agent {$agent->name}", [
-                'duration_ms' => $durationMs,
+            $this->logService->info("Tool executed successfully: {$toolName} by agent {$agent->name}", [
+                'channel' => 'agent',
+                'type' => 'tool',
+                'related_id' => $agent->id,
+                'related_type' => Agent::class,
+                'context' => ['tool' => $toolName, 'duration_ms' => $durationMs],
             ]);
 
             return [
@@ -61,9 +65,12 @@ class AgentToolExecutor
                 'executed_at' => now()->toISOString(),
             ];
 
-            Log::error("Tool execution failed: {$toolName} by agent {$agent->name}", [
-                'error' => $e->getMessage(),
-                'duration_ms' => $durationMs,
+            $this->logService->error("Tool execution failed: {$toolName} by agent {$agent->name}", [
+                'channel' => 'agent',
+                'type' => 'tool',
+                'related_id' => $agent->id,
+                'related_type' => Agent::class,
+                'context' => ['tool' => $toolName, 'error' => $e->getMessage(), 'duration_ms' => $durationMs],
             ]);
 
             return [

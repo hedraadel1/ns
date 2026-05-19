@@ -4,25 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SystemLog extends BaseModel
+/**
+ * SystemLog Model
+ *
+ * Extends the base Log model for system-specific logging.
+ */
+class SystemLog extends Log
 {
-    protected $table = 'logs';
-
-    protected $fillable = [
-        'level',
-        'channel',
-        'message',
-        'context',
-        'type',
-        'user_id',
-        'related_id',
-        'related_type',
-    ];
-
-    protected $casts = [
-        'context' => 'json',
-    ];
-
+    /**
+     * Get the user that owns the log.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

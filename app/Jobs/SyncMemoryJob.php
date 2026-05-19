@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 use App\Services\Memory\WorkingMemoryService;
 use App\Services\Memory\EpisodicMemoryService;
 use App\Services\Memory\SemanticMemoryService;
@@ -20,16 +20,19 @@ class SyncMemoryJob implements ShouldQueue
 
     protected $contactId;
     protected $memoryType;
+    protected LogService $logService;
 
     /**
      * Create a new job instance.
      */
     public function __construct(
         int $contactId,
-        string $memoryType = 'all'
+        string $memoryType = 'all',
+        LogService $logService
     ) {
         $this->contactId = $contactId;
         $this->memoryType = $memoryType;
+        $this->logService = $logService;
     }
 
     /**
@@ -43,9 +46,12 @@ class SyncMemoryJob implements ShouldQueue
         GraphMemoryService $graphMemoryService
     ) {
         try {
-            Log::info('Starting internal memory sync job', [
-                'contactId' => $this->contactId,
-                'memoryType' => $this->memoryType
+            $this->logService->info('Starting internal memory sync job', [
+                'channel' => 'memory',
+                'type' => 'sync',
+                'related_id' => $this->contactId,
+                'related_type' => 'App\Models\Contact',
+                'context' => ['memoryType' => $this->memoryType],
             ]);
 
             $typesToSync = $this->memoryType === 'all' 
@@ -78,15 +84,20 @@ class SyncMemoryJob implements ShouldQueue
                 }
             }
 
-            Log::info('Internal memory sync job completed successfully', [
-                'contactId' => $this->contactId,
-                'memoryType' => $this->memoryType
+            $this->logService->info('Internal memory sync job completed successfully', [
+                'channel' => 'memory',
+                'type' => 'sync',
+                'related_id' => $this->contactId,
+                'related_type' => 'App\Models\Contact',
+                'context' => ['memoryType' => $this->memoryType],
             ]);
         } catch (\Exception $e) {
-            Log::error('Internal memory sync job failed', [
-                'contactId' => $this->contactId,
-                'memoryType' => $this->memoryType,
-                'error' => $e->getMessage()
+            $this->logService->error('Internal memory sync job failed', [
+                'channel' => 'memory',
+                'type' => 'sync',
+                'related_id' => $this->contactId,
+                'related_type' => 'App\Models\Contact',
+                'context' => ['memoryType' => $this->memoryType, 'error' => $e->getMessage()],
             ]);
 
             // Optionally, you could re-throw the exception to trigger retry logic
@@ -99,7 +110,10 @@ class SyncMemoryJob implements ShouldQueue
      */
     protected function syncWorkingMemory(WorkingMemoryService $workingMemoryService)
     {
-        Log::info('Performing internal working memory maintenance');
+        $this->logService->debug('Performing internal working memory maintenance', [
+            'channel' => 'memory',
+            'type' => 'sync',
+        ]);
         // Add internal sync/maintenance logic here
     }
 
@@ -108,7 +122,10 @@ class SyncMemoryJob implements ShouldQueue
      */
     protected function syncEpisodicMemory(EpisodicMemoryService $episodicMemoryService)
     {
-        Log::info('Performing internal episodic memory maintenance');
+        $this->logService->debug('Performing internal episodic memory maintenance', [
+            'channel' => 'memory',
+            'type' => 'sync',
+        ]);
         // Add internal sync/maintenance logic here
     }
 
@@ -117,7 +134,10 @@ class SyncMemoryJob implements ShouldQueue
      */
     protected function syncSemanticMemory(SemanticMemoryService $semanticMemoryService)
     {
-        Log::info('Performing internal semantic memory maintenance');
+        $this->logService->debug('Performing internal semantic memory maintenance', [
+            'channel' => 'memory',
+            'type' => 'sync',
+        ]);
         // Add internal sync/maintenance logic here
     }
 
@@ -126,7 +146,10 @@ class SyncMemoryJob implements ShouldQueue
      */
     protected function syncStructuredMemory(StructuredMemoryService $structuredMemoryService)
     {
-        Log::info('Performing internal structured memory maintenance');
+        $this->logService->debug('Performing internal structured memory maintenance', [
+            'channel' => 'memory',
+            'type' => 'sync',
+        ]);
         // Add internal sync/maintenance logic here
     }
 
@@ -135,7 +158,10 @@ class SyncMemoryJob implements ShouldQueue
      */
     protected function syncGraphMemory(GraphMemoryService $graphMemoryService)
     {
-        Log::info('Performing internal graph memory maintenance');
+        $this->logService->debug('Performing internal graph memory maintenance', [
+            'channel' => 'memory',
+            'type' => 'sync',
+        ]);
         // Add internal sync/maintenance logic here
     }
 }

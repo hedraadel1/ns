@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Services\ContactHubService;
+use App\Services\LogService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ContactController extends Controller
 {
-    public function __construct(protected ContactHubService $contactHubService)
-    {
+    public function __construct(
+        protected ContactHubService $contactHubService,
+        protected LogService $logService
+    ) {
     }
 
     public function index(Request $request)
@@ -57,6 +60,14 @@ class ContactController extends Controller
         $contact = Contact::create(array_merge($data, ['uuid' => Contact::generateUuid(), 'type' => $data['type'] ?? Contact::TYPE_CONTACT]));
         $this->contactHubService->syncContactDetails($contact);
 
+        $this->logService->info('Contact created', [
+            'channel' => 'contact',
+            'type' => 'create',
+            'related_id' => $contact->id,
+            'related_type' => Contact::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $contact], 201);
     }
 
@@ -90,12 +101,29 @@ class ContactController extends Controller
         $contact->update($data);
         $this->contactHubService->syncContactDetails($contact);
 
+        $this->logService->info('Contact updated', [
+            'channel' => 'contact',
+            'type' => 'update',
+            'related_id' => $contact->id,
+            'related_type' => Contact::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $contact]);
     }
 
     public function destroy($id)
     {
         $contact = Contact::findOrFail($id);
+
+        $this->logService->info('Contact deleted', [
+            'channel' => 'contact',
+            'type' => 'delete',
+            'related_id' => $contact->id,
+            'related_type' => Contact::class,
+            'user_id' => request()->user()?->id,
+        ]);
+
         $contact->delete();
 
         return response()->json(['message' => 'contact deleted', 'id' => $id]);
@@ -143,6 +171,13 @@ class ContactController extends Controller
             $this->contactHubService->syncContactDetails($contact);
             $created++;
         }
+
+        $this->logService->info('Contacts imported', [
+            'channel' => 'contact',
+            'type' => 'import',
+            'user_id' => $request->user()?->id,
+            'context' => ['count' => $created],
+        ]);
 
         return response()->json(['message' => 'Contacts imported successfully', 'created' => $created]);
     }

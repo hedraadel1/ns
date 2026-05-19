@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\AgentTask;
 use App\Models\Workflow;
-use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 use Illuminate\Support\Str;
 
 class TaskQueueService
@@ -13,6 +13,12 @@ class TaskQueueService
     protected array $processing = [];
     protected array $completed = [];
     protected array $failed = [];
+    protected LogService $logService;
+
+    public function __construct(LogService $logService)
+    {
+        $this->logService = $logService;
+    }
 
     public function enqueue(AgentTask $task, array $options = []): AgentTask
     {
@@ -29,7 +35,14 @@ class TaskQueueService
         $fresh = AgentTask::find($id);
 
         $this->queue[] = $fresh->id;
-        Log::info("Task enqueued: {$fresh->title} (ID: {$fresh->id})");
+
+        $this->logService->info('Task enqueued', [
+            'channel' => 'task',
+            'type' => 'queue',
+            'related_id' => $fresh->id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['title' => $fresh->title],
+        ]);
 
         return $fresh;
     }
@@ -46,7 +59,14 @@ class TaskQueueService
         if ($task) {
             $task->update(['status' => 'running']);
             $this->processing[] = $taskId;
-            Log::info("Task dequeued: {$task->title} (ID: {$task->id})");
+
+            $this->logService->info('Task dequeued', [
+                'channel' => 'task',
+                'type' => 'dequeue',
+                'related_id' => $task->id,
+                'related_type' => 'App\Models\AgentTask',
+                'context' => ['title' => $task->title],
+            ]);
         }
 
         return $task;
@@ -66,7 +86,14 @@ class TaskQueueService
         $this->processing = array_filter($this->processing, fn($id) => $id !== $task->id);
         $this->completed[] = $task->id;
 
-        Log::info("Task completed: {$task->title} (ID: {$task->id})");
+        $this->logService->info('Task completed', [
+            'channel' => 'task',
+            'type' => 'complete',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['title' => $task->title, 'result' => $result],
+        ]);
+
         return $task;
     }
 
@@ -83,8 +110,12 @@ class TaskQueueService
         $this->processing = array_filter($this->processing, fn($id) => $id !== $task->id);
         $this->failed[] = $task->id;
 
-        Log::error("Task failed: {$task->title} (ID: {$task->id})", [
-            'error' => $error,
+        $this->logService->error('Task failed', [
+            'channel' => 'task',
+            'type' => 'fail',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['title' => $task->title, 'error' => $error],
         ]);
 
         return $task;
@@ -101,13 +132,22 @@ class TaskQueueService
         $fresh = AgentTask::find($id);
 
         if ($fresh) {
-            Log::info("Task cancelled: {$fresh->title} (ID: {$fresh->id})");
+            $this->logService->info('Task cancelled', [
+                'channel' => 'task',
+                'type' => 'cancel',
+                'related_id' => $fresh->id,
+                'related_type' => 'App\Models\AgentTask',
+                'context' => ['title' => $fresh->title],
+            ]);
             return $fresh;
         }
 
-        Log::warning("Task cancelled but fresh model could not be retrieved", [
-            'id' => $id,
-            'original_task' => $task->toArray(),
+        $this->logService->warning('Task cancelled but fresh model could not be retrieved', [
+            'channel' => 'task',
+            'type' => 'cancel',
+            'related_id' => $id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['original_task' => $task->toArray()],
         ]);
 
         return $task;
@@ -116,7 +156,15 @@ class TaskQueueService
     public function pause(AgentTask $task): AgentTask
     {
         $task->update(['status' => 'paused']);
-        Log::info("Task paused: {$task->title} (ID: {$task->id})");
+
+        $this->logService->info('Task paused', [
+            'channel' => 'task',
+            'type' => 'pause',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['title' => $task->title],
+        ]);
+
         return $task;
     }
 
@@ -124,7 +172,15 @@ class TaskQueueService
     {
         $task->update(['status' => 'pending']);
         $this->enqueue($task);
-        Log::info("Task resumed: {$task->title} (ID: {$task->id})");
+
+        $this->logService->info('Task resumed', [
+            'channel' => 'task',
+            'type' => 'resume',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'context' => ['title' => $task->title],
+        ]);
+
         return $task;
     }
 
@@ -162,19 +218,31 @@ class TaskQueueService
     public function clearQueue(): void
     {
         $this->queue = [];
-        Log::info('Task queue cleared');
+
+        $this->logService->info('Task queue cleared', [
+            'channel' => 'task',
+            'type' => 'clear',
+        ]);
     }
 
     public function clearCompleted(): void
     {
         $this->completed = [];
-        Log::info('Completed tasks cleared');
+
+        $this->logService->info('Completed tasks cleared', [
+            'channel' => 'task',
+            'type' => 'clear',
+        ]);
     }
 
     public function clearFailed(): void
     {
         $this->failed = [];
-        Log::info('Failed tasks cleared');
+
+        $this->logService->info('Failed tasks cleared', [
+            'channel' => 'task',
+            'type' => 'clear',
+        ]);
     }
 
     public function getQueuedTaskIds(): array

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Agent;
-use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 use Illuminate\Support\Str;
 
 class AgentLifecycleService
@@ -16,13 +16,22 @@ class AgentLifecycleService
         Agent::STATUS_COMPLETED => [Agent::STATUS_IDLE],
     ];
 
+    public function __construct(protected LogService $logService) {}
+
     public function initialize(Agent $agent): Agent
     {
         $agent->status = Agent::STATUS_RUNNING;
         $agent->execution_count += 1;
         $agent->last_executed_at = now();
         $agent->save();
-        Log::info("Agent initialized: {$agent->name} (ID: {$agent->id})");
+
+        $this->logService->info("Agent initialized: {$agent->name} (ID: {$agent->id})", [
+            'channel' => 'agent',
+            'type' => 'lifecycle',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+        ]);
+
         return $agent;
     }
 
@@ -41,7 +50,14 @@ class AgentLifecycleService
         }
 
         $agent->update(['status' => $newStatus]);
-        Log::info("Agent state transition: {$agent->name} from {$currentStatus} to {$newStatus}");
+
+        $this->logService->info("Agent state transition: {$agent->name} from {$currentStatus} to {$newStatus}", [
+            'channel' => 'agent',
+            'type' => 'lifecycle',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+            'context' => ['from' => $currentStatus, 'to' => $newStatus],
+        ]);
 
         return $agent->fresh();
     }
@@ -64,16 +80,31 @@ class AgentLifecycleService
     public function complete(Agent $agent): Agent
     {
         $agent->recordSuccess();
-        Log::info("Agent completed successfully: {$agent->name}");
+
+        $this->logService->info("Agent completed successfully: {$agent->name}", [
+            'channel' => 'agent',
+            'type' => 'lifecycle',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+        ]);
+
         return $agent->fresh();
     }
 
     public function fail(Agent $agent, string $errorMessage = null): Agent
     {
         $agent->recordError();
+
         if ($errorMessage) {
-            Log::error("Agent failed: {$agent->name} - {$errorMessage}");
+            $this->logService->error("Agent failed: {$agent->name} - {$errorMessage}", [
+                'channel' => 'agent',
+                'type' => 'lifecycle',
+                'related_id' => $agent->id,
+                'related_type' => Agent::class,
+                'context' => ['error' => $errorMessage],
+            ]);
         }
+
         return $agent->fresh();
     }
 

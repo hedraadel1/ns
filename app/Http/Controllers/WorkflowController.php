@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Workflow;
+use App\Services\LogService;
 use App\Services\WorkflowExecutor;
 use App\Services\WorkflowValidationService;
 use Illuminate\Http\Request;
@@ -12,7 +13,8 @@ class WorkflowController extends Controller
 {
     public function __construct(
         protected WorkflowExecutor $executor,
-        protected WorkflowValidationService $validator
+        protected WorkflowValidationService $validator,
+        protected LogService $logService
     ) {}
 
     public function index(Request $request)
@@ -72,6 +74,14 @@ class WorkflowController extends Controller
 
         $workflow = Workflow::create($workflowData);
 
+        $this->logService->info('Workflow created', [
+            'channel' => 'workflow',
+            'type' => 'create',
+            'related_id' => $workflow->id,
+            'related_type' => Workflow::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $workflow, 'message' => 'Workflow created successfully'], 201);
     }
 
@@ -117,12 +127,28 @@ class WorkflowController extends Controller
 
         $workflow->update($updateData);
 
+        $this->logService->info('Workflow updated', [
+            'channel' => 'workflow',
+            'type' => 'update',
+            'related_id' => $workflow->id,
+            'related_type' => Workflow::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $workflow, 'message' => 'Workflow updated successfully']);
     }
 
     public function destroy(Workflow $workflow)
     {
         $workflow->update(['is_active' => false]);
+
+        $this->logService->info('Workflow deactivated', [
+            'channel' => 'workflow',
+            'type' => 'deactivate',
+            'related_id' => $workflow->id,
+            'related_type' => Workflow::class,
+            'user_id' => request()->user()?->id,
+        ]);
 
         return response()->json(['message' => 'Workflow deactivated successfully']);
     }
@@ -138,13 +164,40 @@ class WorkflowController extends Controller
         ])['context'] ?? [];
 
         try {
+            $this->logService->info('Workflow execution started', [
+                'channel' => 'workflow',
+                'type' => 'execute',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'user_id' => $request->user()?->id,
+                'context' => $context,
+            ]);
+
             $result = $this->executor->execute($workflow, $context);
+
+            $this->logService->info('Workflow execution completed', [
+                'channel' => 'workflow',
+                'type' => 'execute',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'user_id' => $request->user()?->id,
+                'context' => ['status' => $result['status'] ?? 'completed'],
+            ]);
 
             return response()->json([
                 'message' => 'Workflow execution completed',
                 'data' => $result,
             ]);
         } catch (\Throwable $e) {
+            $this->logService->error('Workflow execution failed', [
+                'channel' => 'workflow',
+                'type' => 'execute',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'user_id' => $request->user()?->id,
+                'context' => ['error' => $e->getMessage()],
+            ]);
+
             return response()->json([
                 'message' => 'Workflow execution failed',
                 'error' => $e->getMessage(),

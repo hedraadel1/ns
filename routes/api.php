@@ -73,8 +73,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('agents.status');
 
     /**
-       * Workflows Hub Routes
-       */
+     * Workflows Hub Routes
+     */
     Route::resource('workflows', \App\Http\Controllers\WorkflowController::class);
     Route::post('/workflows/{id}/execute', [\App\Http\Controllers\WorkflowController::class, 'execute'])
        ->name('workflows.execute');
@@ -84,8 +84,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
        ->name('workflows.templates');
 
     /**
-       * Tasks Hub Routes
-       */
+     * Tasks Hub Routes
+     */
     Route::resource('tasks', \App\Http\Controllers\TaskController::class);
     Route::post('/tasks/{id}/cancel', [\App\Http\Controllers\TaskController::class, 'cancel'])
        ->name('tasks.cancel');
@@ -112,8 +112,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('memories.indexMemory');
 
     /**
-      * AI Models Hub Routes
-      */
+     * AI Models Hub Routes
+     */
     Route::resource('ai-models', \App\Http\Controllers\AiModelController::class);
     Route::post('/ai-models/{id}/test', [\App\Http\Controllers\AiModelController::class, 'test'])
         ->name('ai-models.test');
@@ -147,8 +147,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('ai-models.budget');
 
     /**
-       * Settings Hub Routes
-       */
+     * Settings Hub Routes
+     */
     Route::group(['prefix' => 'settings'], function () {
        Route::get('/', [\App\Http\Controllers\SettingController::class, 'index'])
              ->name('settings.index');
@@ -184,7 +184,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
              ->name('logs.stats');
        Route::get('/levels', [\App\Http\Controllers\LogController::class, 'levels'])
              ->name('logs.levels');
-       Route::get('/categories', [\App\Http\Controllers\LogController::class, 'categories'])
+       Route::get('/channels', [\App\Http\Controllers\LogController::class, 'channels'])
+             ->name('logs.channels');
+       Route::get('/categories', [\App\Http\Controllers\LogController::class, 'channels'])
              ->name('logs.categories');
        Route::get('/errors', [\App\Http\Controllers\LogController::class, 'errors'])
              ->name('logs.errors');

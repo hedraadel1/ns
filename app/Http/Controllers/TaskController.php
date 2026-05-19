@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AgentTask;
 use App\Models\Workflow;
+use App\Services\LogService;
 use App\Services\TaskQueueService;
 use App\Services\TaskRoutingService;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 class TaskController extends Controller
 {
     public function __construct(
+        protected LogService $logService,
         protected TaskQueueService $queue,
         protected TaskRoutingService $router
     ) {}
@@ -83,6 +85,15 @@ class TaskController extends Controller
         $task = AgentTask::find($task->id);
         $this->queue->enqueue($task);
 
+        $this->logService->info('Task created', [
+            'channel' => 'task',
+            'type' => 'create',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => $request->user()?->id,
+            'context' => ['title' => $task->title, 'status' => $task->status],
+        ]);
+
         return response()->json(['data' => $task, 'message' => 'Task created and queued'], 201);
     }
 
@@ -111,13 +122,31 @@ class TaskController extends Controller
 
         $task->update($validator->validated());
 
+        $this->logService->info('Task updated', [
+            'channel' => 'task',
+            'type' => 'update',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => $request->user()?->id,
+            'context' => ['changes' => $validator->validated()],
+        ]);
+
         return response()->json(['data' => $task, 'message' => 'Task updated successfully']);
     }
 
     public function destroy(AgentTask $task)
     {
+        $taskId = $task->id;
         $this->queue->cancel($task);
         $task->delete();
+
+        $this->logService->info('Task deleted', [
+            'channel' => 'task',
+            'type' => 'delete',
+            'related_id' => $taskId,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => request()->user()?->id,
+        ]);
 
         return response()->json(['message' => 'Task deleted successfully']);
     }
@@ -125,18 +154,45 @@ class TaskController extends Controller
     public function cancel(AgentTask $task)
     {
         $task = $this->queue->cancel($task);
+
+        $this->logService->warning('Task cancelled', [
+            'channel' => 'task',
+            'type' => 'cancel',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => request()->user()?->id,
+        ]);
+
         return response()->json(['data' => $task, 'message' => 'Task cancelled']);
     }
 
     public function pause(AgentTask $task)
     {
         $this->queue->pause($task);
+
+        $this->logService->info('Task paused', [
+            'channel' => 'task',
+            'type' => 'pause',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => request()->user()?->id,
+        ]);
+
         return response()->json(['data' => $task, 'message' => 'Task paused']);
     }
 
     public function resume(AgentTask $task)
     {
         $this->queue->resume($task);
+
+        $this->logService->info('Task resumed', [
+            'channel' => 'task',
+            'type' => 'resume',
+            'related_id' => $task->id,
+            'related_type' => 'App\Models\AgentTask',
+            'user_id' => request()->user()?->id,
+        ]);
+
         return response()->json(['data' => $task, 'message' => 'Task resumed']);
     }
 

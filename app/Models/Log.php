@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Log Model
@@ -12,13 +13,13 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property int $id
  * @property string $level
- * @property string $category
+ * @property string|null $channel
  * @property string $message
  * @property array<string, mixed> $context
- * @property string $source
+ * @property string $type
  * @property int|null $user_id
- * @property string|null $ip_address
- * @property string|null $user_agent
+ * @property int|null $related_id
+ * @property string|null $related_type
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  */
@@ -38,13 +39,13 @@ class Log extends Model
      */
     protected $fillable = [
         'level',
-        'category',
+        'channel',
         'message',
         'context',
-        'source',
+        'type',
         'user_id',
-        'ip_address',
-        'user_agent',
+        'related_id',
+        'related_type',
     ];
 
     /**
@@ -71,18 +72,35 @@ class Log extends Model
     public const LEVEL_EMERGENCY = 'emergency';
 
     /**
-     * Log category constants.
+     * Log channel constants.
      */
-    public const CATEGORY_AUTH = 'auth';
-    public const CATEGORY_SECURITY = 'security';
-    public const CATEGORY_API = 'api';
-    public const CATEGORY_WORKFLOW = 'workflow';
-    public const CATEGORY_AGENT = 'agent';
-    public const CATEGORY_AI = 'ai';
-    public const CATEGORY_SYSTEM = 'system';
-    public const CATEGORY_DATABASE = 'database';
-    public const CATEGORY_CACHE = 'cache';
-    public const CATEGORY_QUEUE = 'queue';
+    public const CHANNEL_AUTH = 'auth';
+    public const CHANNEL_SECURITY = 'security';
+    public const CHANNEL_API = 'api';
+    public const CHANNEL_WORKFLOW = 'workflow';
+    public const CHANNEL_AGENT = 'agent';
+    public const CHANNEL_AI = 'ai';
+    public const CHANNEL_SYSTEM = 'system';
+    public const CHANNEL_DATABASE = 'database';
+    public const CHANNEL_CACHE = 'cache';
+    public const CHANNEL_QUEUE = 'queue';
+
+    /**
+     * Log type constants.
+     */
+    public const TYPE_APPLICATION = 'application';
+    public const TYPE_SYSTEM = 'system';
+    public const TYPE_SECURITY = 'security';
+
+    /**
+     * Get the related entity.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+     */
+    public function related(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
     /**
      * Scope to filter by level.
@@ -100,30 +118,30 @@ class Log extends Model
     }
 
     /**
-     * Scope to filter by category.
+     * Scope to filter by channel.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string|array $categories
+     * @param string|array $channels
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeByCategory($query, $categories)
+    public function scopeByChannel($query, $channels)
     {
-        if (is_array($categories)) {
-            return $query->whereIn('category', $categories);
+        if (is_array($channels)) {
+            return $query->whereIn('channel', $channels);
         }
-        return $query->where('category', $categories);
+        return $query->where('channel', $channels);
     }
 
     /**
-     * Scope to filter by source.
+     * Scope to filter by type.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $source
+     * @param string $type
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeBySource($query, string $source)
+    public function scopeByType($query, string $type)
     {
-        return $query->where('source', $source);
+        return $query->where('type', $type);
     }
 
     /**

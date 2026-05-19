@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Workflow;
 use App\Models\AgentTask;
 use App\Services\AgentRegistry;
+use App\Services\LogService;
 use App\Services\TaskRoutingService;
-use Illuminate\Support\Facades\Log;
+use App\Services\WorkflowErrorHandler;
+use App\Services\WorkflowValidationService;
 use Illuminate\Support\Arr;
 
 class WorkflowExecutor
@@ -15,6 +17,7 @@ class WorkflowExecutor
     protected TaskRoutingService $router;
     protected WorkflowValidationService $validator;
     protected WorkflowErrorHandler $errorHandler;
+    protected LogService $logService;
     protected array $executionContext = [];
     protected array $stepResults = [];
 
@@ -22,12 +25,14 @@ class WorkflowExecutor
         AgentRegistry $registry,
         TaskRoutingService $router,
         WorkflowValidationService $validator,
-        WorkflowErrorHandler $errorHandler
+        WorkflowErrorHandler $errorHandler,
+        LogService $logService
     ) {
         $this->registry = $registry;
         $this->router = $router;
         $this->validator = $validator;
         $this->errorHandler = $errorHandler;
+        $this->logService = $logService;
     }
 
     public function execute(Workflow $workflow, array $context = []): array
@@ -43,7 +48,13 @@ class WorkflowExecutor
 
         $workflow->setRunning();
         $workflow->incrementExecution();
-        Log::info("Workflow execution started: {$workflow->name} (ID: {$workflow->id})");
+
+        $this->logService->info("Workflow execution started: {$workflow->name} (ID: {$workflow->id})", [
+            'channel' => 'workflow',
+            'type' => 'execute',
+            'related_id' => $workflow->id,
+            'related_type' => Workflow::class,
+        ]);
 
         $steps = $workflow->steps ?? [];
         $totalSteps = count($steps);
@@ -87,15 +98,25 @@ class WorkflowExecutor
                     }
 
                     if ($errorResult['should_abort']) {
-                        Log::warning("Workflow aborted at step {$stepOrder}: {$stepName}");
+                        $this->logService->warning("Workflow aborted at step {$stepOrder}: {$stepName}", [
+                            'channel' => 'workflow',
+                            'type' => 'abort',
+                            'related_id' => $workflow->id,
+                            'related_type' => Workflow::class,
+                            'context' => ['step' => $stepName, 'step_order' => $stepOrder],
+                        ]);
                         break;
                     }
                 }
             } catch (\Throwable $e) {
                 $failedSteps++;
-                Log::error("Workflow step failed: {$stepName}", [
-                    'error' => $e->getMessage(),
-                    'step_order' => $stepOrder,
+
+                $this->logService->error("Workflow step failed: {$stepName}", [
+                    'channel' => 'workflow',
+                    'type' => 'step',
+                    'related_id' => $workflow->id,
+                    'related_type' => Workflow::class,
+                    'context' => ['error' => $e->getMessage(), 'step_order' => $stepOrder],
                 ]);
 
                 $this->stepResults[] = [
@@ -112,13 +133,23 @@ class WorkflowExecutor
 
         if ($allStepsCompleted) {
             $workflow->recordSuccess();
-            Log::info("Workflow completed successfully: {$workflow->name}");
+
+            $this->logService->info("Workflow completed successfully: {$workflow->name}", [
+                'channel' => 'workflow',
+                'type' => 'complete',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'context' => ['completed_steps' => $completedSteps, 'total_steps' => $totalSteps],
+            ]);
         } elseif ($hasFailures) {
             $workflow->recordError();
-            Log::error("Workflow failed: {$workflow->name}", [
-                'completed' => $completedSteps,
-                'failed' => $failedSteps,
-                'total' => $totalSteps,
+
+            $this->logService->error("Workflow failed: {$workflow->name}", [
+                'channel' => 'workflow',
+                'type' => 'fail',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'context' => ['completed' => $completedSteps, 'failed' => $failedSteps, 'total' => $totalSteps],
             ]);
         } else {
             $workflow->update(['status' => Workflow::STATUS_PAUSED]);
@@ -161,8 +192,12 @@ class WorkflowExecutor
 
             $durationMs = round((microtime(true) - $startTime) * 1000, 2);
 
-            Log::info("Workflow step completed: {$stepName}", [
-                'duration_ms' => $durationMs,
+            $this->logService->info("Workflow step completed: {$stepName}", [
+                'channel' => 'workflow',
+                'type' => 'step',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'context' => ['step' => $stepName, 'duration_ms' => $durationMs],
             ]);
 
             return [
@@ -210,7 +245,7 @@ class WorkflowExecutor
                 'action' => 'processed',
                 'output' => 'Processed step: ' . ($step['name'] ?? 'unknown'),
             ],
-        };
+        ];
     }
 
     protected function evaluateCondition(array $condition, array $context): bool
@@ -246,18 +281,37 @@ class WorkflowExecutor
         $retryDelay = $step['retry_delay'] ?? $workflow->settings['retry_delay'] ?? 60;
 
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-            Log::info("Retrying step {$stepOrder}, attempt {$attempt}/{$maxRetries}");
+            $this->logService->info("Retrying step {$stepOrder}, attempt {$attempt}/{$maxRetries}", [
+                'channel' => 'workflow',
+                'type' => 'retry',
+                'related_id' => $workflow->id,
+                'related_type' => Workflow::class,
+                'context' => ['step_order' => $stepOrder, 'attempt' => $attempt, 'max_retries' => $maxRetries],
+            ]);
 
             sleep(min($retryDelay * $attempt, 300));
 
             $result = $this->executeStep($workflow, $step, $stepOrder, $context);
             if ($result['success']) {
-                Log::info("Step retry succeeded on attempt {$attempt}");
+                $this->logService->info("Step retry succeeded on attempt {$attempt}", [
+                    'channel' => 'workflow',
+                    'type' => 'retry',
+                    'related_id' => $workflow->id,
+                    'related_type' => Workflow::class,
+                    'context' => ['step_order' => $stepOrder, 'attempt' => $attempt],
+                ]);
                 return $result;
             }
         }
 
-        Log::error("Step retry exhausted after {$maxRetries} attempts");
+        $this->logService->error("Step retry exhausted after {$maxRetries} attempts", [
+            'channel' => 'workflow',
+            'type' => 'retry',
+            'related_id' => $workflow->id,
+            'related_type' => Workflow::class,
+            'context' => ['step_order' => $stepOrder, 'max_retries' => $maxRetries],
+        ]);
+
         return [
             'step' => $step['name'] ?? "Step {$stepOrder}",
             'step_order' => $stepOrder,

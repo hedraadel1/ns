@@ -1,6 +1,10 @@
 # AI AGENT STRICT DEVELOPMENT PROTOCOL
 
-You MUST strictly follow this 3-Phase Workflow for any new feature or update requested by the user (Hedra).
+#Please follow this 3-Phase Workflow for This new feature or update which in this report :-
+
+```report
+
+```
 
 ## PHASE 1: BLUEPRINT GENERATION
 When the user asks to plan a feature, you must create a detailed Markdown file in `_AI_Workflow/Updates_Docs/` named `UP-[ID]_[FeatureName].md`. You MUST use the "UPDATE BLUEPRINT TEMPLATE".

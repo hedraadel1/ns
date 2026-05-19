@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Events\MemoryIndexed;
 use App\Jobs\SyncMemoryJob;
 use App\Models\Contact;
+use App\Services\LogService;
 use App\Services\Memory\WorkingMemoryService;
 use App\Services\Memory\EpisodicMemoryService;
 use App\Services\Memory\SemanticMemoryService;
@@ -27,6 +28,7 @@ class MemoryController extends Controller
     protected $memoryMaintenanceService;
     protected $memorySummaryService;
     protected $mem0Integration;
+    protected LogService $logService;
 
     public function __construct(
         WorkingMemoryService $workingMemoryService,
@@ -37,7 +39,8 @@ class MemoryController extends Controller
         MemoryRouter $memoryRouter = null,
         MemoryMaintenanceService $memoryMaintenanceService = null,
         MemorySummaryService $memorySummaryService = null,
-        Mem0Integration $mem0Integration = null
+        Mem0Integration $mem0Integration = null,
+        LogService $logService
     ) {
         $this->workingMemoryService = $workingMemoryService;
         $this->episodicMemoryService = $episodicMemoryService;
@@ -54,6 +57,7 @@ class MemoryController extends Controller
         $this->memoryMaintenanceService = $memoryMaintenanceService ?? new MemoryMaintenanceService();
         $this->memorySummaryService = $memorySummaryService ?? new MemorySummaryService();
         $this->mem0Integration = $mem0Integration ?? new Mem0Integration();
+        $this->logService = $logService;
     }
 
     /**
@@ -169,6 +173,15 @@ class MemoryController extends Controller
             }
 
             if ($result !== null && $result !== false) {
+                $this->logService->info('Memory created', [
+                    'channel' => 'memory',
+                    'type' => 'create',
+                    'related_id' => $result,
+                    'related_type' => 'App\Models\Memory',
+                    'user_id' => $request->user()?->id,
+                    'context' => ['memory_type' => $type],
+                ]);
+
                 return response()->json([
                     'message' => "Memory created successfully",
                     'id' => is_int($result) ? $result : null,
@@ -180,9 +193,10 @@ class MemoryController extends Controller
                 'message' => 'Failed to create memory'
             ], 500);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::store failed', [
-                'error' => $e->getMessage(),
-                'request' => $request->all()
+            $this->logService->error('Memory creation failed', [
+                'channel' => 'memory',
+                'type' => 'create',
+                'context' => ['error' => $e->getMessage(), 'request' => $request->all()],
             ]);
 
             return response()->json([
@@ -198,9 +212,9 @@ class MemoryController extends Controller
     public function show($id)
     {
         // For simplicity, we'll assume this is an episodic memory ID
-                // In a real implementation, we might need to determine the type from context
-                try {
-                    $memory = $this->episodicMemoryService->retrieve((int) $id, 1)->first();
+        // In a real implementation, we might need to determine the type from context
+        try {
+            $memory = $this->episodicMemoryService->retrieve((int) $id, 1)->first();
 
             if ($memory) {
                 return response()->json(['data' => $memory]);
@@ -210,9 +224,10 @@ class MemoryController extends Controller
                 'message' => 'Memory not found'
             ], 404);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::show failed', [
-                'id' => $id,
-                'error' => $e->getMessage()
+            $this->logService->error('Memory retrieval failed', [
+                'channel' => 'memory',
+                'type' => 'retrieve',
+                'context' => ['id' => $id, 'error' => $e->getMessage()],
             ]);
 
             return response()->json([
@@ -298,6 +313,15 @@ class MemoryController extends Controller
             }
 
             if ($result) {
+                $this->logService->info('Memory updated', [
+                    'channel' => 'memory',
+                    'type' => 'update',
+                    'related_id' => $id,
+                    'related_type' => 'App\Models\Memory',
+                    'user_id' => $request->user()?->id,
+                    'context' => ['memory_type' => $type],
+                ]);
+
                 return response()->json([
                     'message' => 'Memory updated successfully',
                     'id' => $id
@@ -308,10 +332,10 @@ class MemoryController extends Controller
                 'message' => 'Failed to update memory'
             ], 400);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::update failed', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'request' => $request->all()
+            $this->logService->error('Memory update failed', [
+                'channel' => 'memory',
+                'type' => 'update',
+                'context' => ['id' => $id, 'error' => $e->getMessage()],
             ]);
 
             return response()->json([
@@ -332,6 +356,14 @@ class MemoryController extends Controller
             $result = $this->episodicMemoryService->delete($id);
 
             if ($result) {
+                $this->logService->info('Memory deleted', [
+                    'channel' => 'memory',
+                    'type' => 'delete',
+                    'related_id' => $id,
+                    'related_type' => 'App\Models\Memory',
+                    'user_id' => request()->user()?->id,
+                ]);
+
                 return response()->json([
                     'message' => 'Memory deleted successfully',
                     'id' => $id
@@ -342,9 +374,10 @@ class MemoryController extends Controller
                 'message' => 'Memory not found or could not be deleted'
             ], 404);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::destroy failed', [
-                'id' => $id,
-                'error' => $e->getMessage()
+            $this->logService->error('Memory deletion failed', [
+                'channel' => 'memory',
+                'type' => 'delete',
+                'context' => ['id' => $id, 'error' => $e->getMessage()],
             ]);
 
             return response()->json([
@@ -454,9 +487,10 @@ class MemoryController extends Controller
                 'totalResults' => array_sum(array_map('count', $results))
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::search failed', [
-                'error' => $e->getMessage(),
-                'request' => $request->all()
+            $this->logService->error('Memory search failed', [
+                'channel' => 'memory',
+                'type' => 'search',
+                'context' => ['error' => $e->getMessage(), 'request' => $request->all()],
             ]);
 
             return response()->json([
@@ -509,6 +543,15 @@ class MemoryController extends Controller
                 );
 
                 if ($result) {
+                    $this->logService->info('Memory indexed', [
+                        'channel' => 'memory',
+                        'type' => 'index',
+                        'related_id' => $id,
+                        'related_type' => 'App\Models\Memory',
+                        'user_id' => $request->user()?->id,
+                        'context' => ['memory_type' => $validated['type']],
+                    ]);
+
                     return response()->json([
                         'message' => 'Memory indexed successfully for semantic search',
                         'id' => $id
@@ -520,9 +563,10 @@ class MemoryController extends Controller
                 'message' => 'Failed to index memory'
             ], 500);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('MemoryController::indexMemory failed', [
-                'id' => $id,
-                'error' => $e->getMessage()
+            $this->logService->error('Memory indexing failed', [
+                'channel' => 'memory',
+                'type' => 'index',
+                'context' => ['id' => $id, 'error' => $e->getMessage()],
             ]);
 
             return response()->json([

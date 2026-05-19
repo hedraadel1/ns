@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Log;
+use App\Services\LogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -12,10 +13,17 @@ use Illuminate\Support\Facades\Validator;
  * LogController
  *
  * Handles log search, filtering, and retrieval.
- * Supports filtering by level, category, source, user, and date range.
+ * Supports filtering by level, channel, and date range.
  */
 class LogController extends Controller
 {
+    protected LogService $logService;
+
+    public function __construct(LogService $logService)
+    {
+        $this->logService = $logService;
+    }
+
     /**
      * Display a listing of logs with filters.
      *
@@ -26,8 +34,7 @@ class LogController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'level' => ['nullable', 'string'],
-            'category' => ['nullable', 'string'],
-            'source' => ['nullable', 'string'],
+            'channel' => ['nullable', 'string'],
             'user_id' => ['nullable', 'integer'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -49,14 +56,9 @@ class LogController extends Controller
             $query->byLevel($request->input('level'));
         }
 
-        // Filter by category
-        if ($request->has('category')) {
-            $query->byCategory($request->input('category'));
-        }
-
-        // Filter by source
-        if ($request->has('source')) {
-            $query->bySource($request->input('source'));
+        // Filter by channel
+        if ($request->has('channel')) {
+            $query->byChannel($request->input('channel'));
         }
 
         // Filter by user
@@ -99,8 +101,15 @@ class LogController extends Controller
      * @return JsonResponse
      */
     public function show($id): JsonResponse
-       {
-             $log = Log::findOrFail((int) $id);
+    {
+        $log = $this->logService->getById((int) $id);
+
+        if (!$log) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Log not found',
+            ], 404);
+        }
 
         return response()->json([
             'success' => true,
@@ -140,40 +149,20 @@ class LogController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => [
-                ['value' => Log::LEVEL_DEBUG, 'label' => 'Debug'],
-                ['value' => Log::LEVEL_INFO, 'label' => 'Info'],
-                ['value' => Log::LEVEL_NOTICE, 'label' => 'Notice'],
-                ['value' => Log::LEVEL_WARNING, 'label' => 'Warning'],
-                ['value' => Log::LEVEL_ERROR, 'label' => 'Error'],
-                ['value' => Log::LEVEL_CRITICAL, 'label' => 'Critical'],
-                ['value' => Log::LEVEL_ALERT, 'label' => 'Alert'],
-                ['value' => Log::LEVEL_EMERGENCY, 'label' => 'Emergency'],
-            ],
+            'data' => $this->logService->getLevels(),
         ]);
     }
 
     /**
-     * Get available log categories.
+     * Get available log channels.
      *
      * @return JsonResponse
      */
-    public function categories(): JsonResponse
+    public function channels(): JsonResponse
     {
         return response()->json([
             'success' => true,
-            'data' => [
-                ['value' => Log::CATEGORY_AUTH, 'label' => 'Authentication'],
-                ['value' => Log::CATEGORY_SECURITY, 'label' => 'Security'],
-                ['value' => Log::CATEGORY_API, 'label' => 'API'],
-                ['value' => Log::CATEGORY_WORKFLOW, 'label' => 'Workflow'],
-                ['value' => Log::CATEGORY_AGENT, 'label' => 'Agent'],
-                ['value' => Log::CATEGORY_AI, 'label' => 'AI'],
-                ['value' => Log::CATEGORY_SYSTEM, 'label' => 'System'],
-                ['value' => Log::CATEGORY_DATABASE, 'label' => 'Database'],
-                ['value' => Log::CATEGORY_CACHE, 'label' => 'Cache'],
-                ['value' => Log::CATEGORY_QUEUE, 'label' => 'Queue'],
-            ],
+            'data' => $this->logService->getChannels(),
         ]);
     }
 
@@ -184,58 +173,67 @@ class LogController extends Controller
      */
     public function stats(): JsonResponse
     {
-        $stats = [
-            'total' => Log::count(),
-            'by_level' => Log::selectRaw('level, count(*) as count')
-                ->groupBy('level')
-                ->pluck('count', 'level')
-                ->toArray(),
-            'by_category' => Log::selectRaw('category, count(*) as count')
-                ->groupBy('category')
-                ->pluck('count', 'category')
-                ->toArray(),
-            'today' => Log::whereDate('created_at', today())->count(),
-            'errors_today' => Log::whereDate('created_at', today())
-                ->errors()
-                ->count(),
-        ];
-
         return response()->json([
             'success' => true,
-            'data' => $stats,
+            'data' => $this->logService->getStats(),
         ]);
     }
 
     /**
-       * Remove the specified log.
-       *
-       * @param int $id
-       * @return JsonResponse
-       */
+     * Remove the specified log.
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
     public function destroy($id): JsonResponse
-       {
-          $log = Log::findOrFail((int) $id);
-       $log->delete();
+    {
+        $deleted = $this->logService->delete((int) $id);
 
-       return response()->json([
-             'success' => true,
-             'message' => 'Log deleted successfully.',
-       ]);
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Log not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Log deleted successfully.',
+        ]);
     }
 
     /**
-       * Clear all logs.
-       *
-       * @return JsonResponse
-       */
-    public function clear(): JsonResponse
+     * Clear all logs or logs older than specified days.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function clear(Request $request): JsonResponse
     {
-       Log::truncate();
+        $validator = Validator::make($request->all(), [
+            'older_than_days' => ['nullable', 'integer', 'min:1'],
+        ]);
 
-       return response()->json([
-             'success' => true,
-             'message' => 'All logs cleared successfully.',
-       ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if ($request->has('older_than_days')) {
+            $deleted = $this->logService->clearOldLogs((int) $request->input('older_than_days'));
+            return response()->json([
+                'success' => true,
+                'message' => "Deleted {$deleted} logs older than {$request->input('older_than_days')} days.",
+            ]);
+        }
+
+        Log::truncate();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All logs cleared successfully.',
+        ]);
     }
- }
-
+}

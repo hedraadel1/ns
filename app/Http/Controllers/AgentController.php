@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agent;
-use App\Services\AgentLifecycleService;
 use App\Services\AgentConfigurationService;
+use App\Services\AgentLifecycleService;
+use App\Services\LogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -12,7 +13,8 @@ class AgentController extends Controller
 {
     public function __construct(
         protected AgentLifecycleService $lifecycle,
-        protected AgentConfigurationService $config
+        protected AgentConfigurationService $config,
+        protected LogService $logService
     ) {}
 
     public function index(Request $request)
@@ -62,6 +64,14 @@ class AgentController extends Controller
 
         $agent = Agent::create($validator->validated());
 
+        $this->logService->info('Agent created', [
+            'channel' => 'agent',
+            'type' => 'create',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $agent, 'message' => 'Agent created successfully'], 201);
     }
 
@@ -91,12 +101,28 @@ class AgentController extends Controller
 
         $agent->update($validator->validated());
 
+        $this->logService->info('Agent updated', [
+            'channel' => 'agent',
+            'type' => 'update',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+            'user_id' => $request->user()?->id,
+        ]);
+
         return response()->json(['data' => $agent, 'message' => 'Agent updated successfully']);
     }
 
     public function destroy(Agent $agent)
     {
         $agent->update(['is_active' => false]);
+
+        $this->logService->info('Agent deactivated', [
+            'channel' => 'agent',
+            'type' => 'deactivate',
+            'related_id' => $agent->id,
+            'related_type' => Agent::class,
+            'user_id' => request()->user()?->id,
+        ]);
 
         return response()->json(['message' => 'Agent deactivated successfully']);
     }
@@ -109,11 +135,29 @@ class AgentController extends Controller
 
         try {
             $this->lifecycle->initialize($agent);
+
+            $this->logService->info('Agent execution started', [
+                'channel' => 'agent',
+                'type' => 'execute',
+                'related_id' => $agent->id,
+                'related_type' => Agent::class,
+                'user_id' => $request->user()?->id,
+            ]);
+
             return response()->json([
                 'message' => 'Agent execution started',
                 'data' => $agent->fresh()
             ]);
         } catch (\Throwable $e) {
+            $this->logService->error('Agent execution failed', [
+                'channel' => 'agent',
+                'type' => 'execute',
+                'related_id' => $agent->id,
+                'related_type' => Agent::class,
+                'user_id' => $request->user()?->id,
+                'context' => ['error' => $e->getMessage()],
+            ]);
+
             return response()->json([
                 'message' => 'Failed to start agent',
                 'error' => $e->getMessage()

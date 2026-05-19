@@ -3,16 +3,26 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Services\LogService;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class ContactHubService
 {
+    public function __construct(protected LogService $logService) {}
+
     public function syncContactDetails(Contact $contact): void
     {
         $this->updateBeliefAutoUpdate($contact);
         $this->extractPreferences($contact);
         $this->updateEmotionalBaseline($contact);
+
+        $this->logService->debug('Contact details synced', [
+            'channel' => 'contact',
+            'type' => 'sync',
+            'related_id' => $contact->id,
+            'related_type' => Contact::class,
+        ]);
     }
 
     public function updateBeliefAutoUpdate(Contact $contact): void

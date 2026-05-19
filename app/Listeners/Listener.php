@@ -3,8 +3,8 @@
 namespace App\Listeners;
 
 use Illuminate\Events\Dispatcher;
-use Illuminate\Log\Logger;
 use Illuminate\Support\ServiceProvider;
+use App\Services\LogService;
 
 /**
  * Base Listener class for event handling
@@ -47,6 +47,21 @@ abstract class Listener
     public int $tries = 1;
 
     /**
+     * The log service instance.
+     *
+     * @var LogService
+     */
+    protected LogService $logService;
+
+    /**
+     * Create the event listener.
+     */
+    public function __construct(LogService $logService)
+    {
+        $this->logService = $logService;
+    }
+
+    /**
      * Get the name of the listener
      *
      * @return string
@@ -65,7 +80,7 @@ abstract class Listener
      */
     protected function log(string $message, string $level = 'info'): void
     {
-        \Log::log($level, "[{$this->getName()}] " . $message);
+        $this->logService->log($level, "[{$this->getName()}] " . $message);
     }
 
     /**

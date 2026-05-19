@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\LogService;
 use App\Services\SettingCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,14 +26,23 @@ class SettingController extends Controller
     protected SettingCacheService $cacheService;
 
     /**
+     * The log service instance.
+     *
+     * @var LogService
+     */
+    protected LogService $logService;
+
+    /**
      * Create a new controller instance.
      *
      * @param SettingCacheService $cacheService
+     * @param LogService $logService
      * @return void
      */
-    public function __construct(SettingCacheService $cacheService)
+    public function __construct(SettingCacheService $cacheService, LogService $logService)
     {
         $this->cacheService = $cacheService;
+        $this->logService = $logService;
     }
 
     /**
@@ -103,6 +113,15 @@ class SettingController extends Controller
         $setting = Setting::create($validator->validated());
         $this->cacheService->forget($setting->key);
 
+        $this->logService->info('Setting created', [
+            'channel' => 'system',
+            'type' => 'setting',
+            'related_id' => $setting->id,
+            'related_type' => 'App\Models\Setting',
+            'user_id' => $request->user()?->id,
+            'context' => ['key' => $setting->key, 'group' => $setting->group],
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $setting,
@@ -136,6 +155,7 @@ class SettingController extends Controller
     public function update(Request $request, string $key): JsonResponse
     {
         $setting = Setting::where('key', $key)->firstOrFail();
+        $oldValue = $setting->value;
 
         $validator = Validator::make($request->all(), [
             'value' => ['required'],
@@ -155,6 +175,19 @@ class SettingController extends Controller
         $setting->update($validator->validated());
         $this->cacheService->forget($key);
 
+        $this->logService->info('Setting updated', [
+            'channel' => 'system',
+            'type' => 'setting',
+            'related_id' => $setting->id,
+            'related_type' => 'App\Models\Setting',
+            'user_id' => $request->user()?->id,
+            'context' => [
+                'key' => $key,
+                'old_value' => $oldValue,
+                'new_value' => $setting->value,
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $setting,
@@ -171,8 +204,19 @@ class SettingController extends Controller
     public function destroy(string $key): JsonResponse
     {
         $setting = Setting::where('key', $key)->firstOrFail();
+        $settingId = $setting->id;
+        $settingKey = $setting->key;
         $setting->delete();
         $this->cacheService->forget($key);
+
+        $this->logService->info('Setting deleted', [
+            'channel' => 'system',
+            'type' => 'setting',
+            'related_id' => $settingId,
+            'related_type' => 'App\Models\Setting',
+            'user_id' => request()->user()?->id,
+            'context' => ['key' => $settingKey],
+        ]);
 
         return response()->json([
             'success' => true,
@@ -241,6 +285,13 @@ class SettingController extends Controller
                 $updated[] = $setting;
             }
         }
+
+        $this->logService->info('Settings bulk updated', [
+            'channel' => 'system',
+            'type' => 'setting',
+            'user_id' => $request->user()?->id,
+            'context' => ['keys' => array_keys($request->input('settings')), 'updated_count' => count($updated)],
+        ]);
 
         return response()->json([
             'success' => true,

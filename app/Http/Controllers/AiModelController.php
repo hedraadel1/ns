@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AIModel;
 use App\Models\ApiKey;
+use App\Services\LogService;
 use App\Services\AI\ProviderInterface;
 use App\Services\AI\ModelSelector;
 use App\Services\AI\FallbackChainService;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Log;
 class AiModelController extends Controller
 {
     public function __construct(
+        protected LogService $logService,
         protected ModelSelector $modelSelector,
         protected FallbackChainService $fallbackChain,
         protected CostOptimizer $costOptimizer,
@@ -79,6 +81,15 @@ class AiModelController extends Controller
 
         $model = AIModel::create($validator->validated());
 
+        $this->logService->info('AI model created', [
+            'channel' => 'ai',
+            'type' => 'create',
+            'related_id' => $model->id,
+            'related_type' => 'App\Models\AIModel',
+            'user_id' => $request->user()?->id,
+            'context' => ['name' => $model->name, 'provider' => $model->provider],
+        ]);
+
         return response()->json([
             'message' => 'AI model created successfully',
             'data' => $model,
@@ -109,6 +120,15 @@ class AiModelController extends Controller
 
         $model->update($validator->validated());
 
+        $this->logService->info('AI model updated', [
+            'channel' => 'ai',
+            'type' => 'update',
+            'related_id' => $model->id,
+            'related_type' => 'App\Models\AIModel',
+            'user_id' => $request->user()?->id,
+            'context' => ['changes' => $validator->validated()],
+        ]);
+
         return response()->json([
             'message' => 'AI model updated successfully',
             'data' => $model,
@@ -118,7 +138,18 @@ class AiModelController extends Controller
     public function destroy($id)
     {
         $model = AIModel::findOrFail($id);
+        $modelId = $model->id;
+        $modelName = $model->name;
         $model->delete();
+
+        $this->logService->info('AI model deleted', [
+            'channel' => 'ai',
+            'type' => 'delete',
+            'related_id' => $modelId,
+            'related_type' => 'App\Models\AIModel',
+            'user_id' => request()->user()?->id,
+            'context' => ['name' => $modelName],
+        ]);
 
         return response()->json(['message' => 'AI model deleted successfully']);
     }
@@ -156,12 +187,29 @@ class AiModelController extends Controller
         $model = AIModel::findOrFail($id);
         $provider = $model->provider;
 
+        $this->logService->info('AI model test started', [
+            'channel' => 'ai',
+            'type' => 'test',
+            'related_id' => $model->id,
+            'related_type' => 'App\Models\AIModel',
+            'user_id' => $request->user()?->id,
+            'context' => ['model' => $model->name, 'provider' => $provider],
+        ]);
+
         $apiKey = ApiKey::where('provider', $provider)
             ->where('type', 'ai_provider')
             ->where('is_active', true)
             ->first()?->key;
 
         if (!$apiKey) {
+            $this->logService->warning('AI model test failed - no API key', [
+                'channel' => 'ai',
+                'type' => 'test',
+                'related_id' => $model->id,
+                'related_type' => 'App\Models\AIModel',
+                'context' => ['provider' => $provider],
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => "No active API key found for provider: {$provider}",
@@ -188,6 +236,20 @@ class AiModelController extends Controller
         $result['model_id'] = $id;
         $result['model_name'] = $model->name;
 
+        $this->logService->info('AI model test completed', [
+            'channel' => 'ai',
+            'type' => 'test',
+            'related_id' => $model->id,
+            'related_type' => 'App\Models\AIModel',
+            'user_id' => $request->user()?->id,
+            'context' => [
+                'model' => $model->name,
+                'provider' => $provider,
+                'success' => $result['success'] ?? false,
+                'duration_ms' => $durationMs,
+            ],
+        ]);
+
         return response()->json($result);
     }
 
@@ -206,6 +268,14 @@ class AiModelController extends Controller
         }
 
         $provider = $request->provider;
+
+        $this->logService->info('AI model execution started', [
+            'channel' => 'ai',
+            'type' => 'execute',
+            'user_id' => $request->user()?->id,
+            'context' => ['model' => $request->model, 'provider' => $provider],
+        ]);
+
         $apiKey = $this->keyPool->getKeyForProvider($provider);
 
         if (!$apiKey) {
@@ -216,6 +286,13 @@ class AiModelController extends Controller
         }
 
         if (!$apiKey) {
+            $this->logService->error('AI model execution failed - no API key', [
+                'channel' => 'ai',
+                'type' => 'execute',
+                'user_id' => $request->user()?->id,
+                'context' => ['provider' => $provider, 'model' => $request->model],
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => "No API key available for provider: {$provider}",
@@ -224,6 +301,13 @@ class AiModelController extends Controller
 
         $rateLimit = $this->rateLimiter->check($provider, $apiKey);
         if (!$rateLimit['allowed']) {
+            $this->logService->warning('AI model execution rate limited', [
+                'channel' => 'ai',
+                'type' => 'execute',
+                'user_id' => $request->user()?->id,
+                'context' => ['provider' => $provider, 'model' => $request->model, 'rate_limit' => $rateLimit],
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => 'Rate limit exceeded',
@@ -252,6 +336,18 @@ class AiModelController extends Controller
 
         $result['request_duration_ms'] = $durationMs;
         $result['rate_limit'] = $this->rateLimiter->getStatus($provider, $apiKey);
+
+        $this->logService->info('AI model execution completed', [
+            'channel' => 'ai',
+            'type' => 'execute',
+            'user_id' => $request->user()?->id,
+            'context' => [
+                'model' => $request->model,
+                'provider' => $provider,
+                'success' => $result['success'] ?? false,
+                'duration_ms' => $durationMs,
+            ],
+        ]);
 
         return response()->json($result);
     }
