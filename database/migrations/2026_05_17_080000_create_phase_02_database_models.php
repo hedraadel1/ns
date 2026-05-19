@@ -63,8 +63,12 @@ return new class extends Migration
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('conversation_id')->nullable()->constrained('conversations')->cascadeOnDelete();
+            $table->string('sender')->nullable();
+            $table->string('sender_name')->nullable();
             $table->string('sender_type')->default('contact');
             $table->string('sender_id')->nullable();
+            $table->string('channel')->nullable();
+            $table->string('thread_id')->nullable();
             $table->string('direction')->default('inbound');
             $table->string('content_type')->default('text');
             $table->longText('content')->nullable();

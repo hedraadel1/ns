@@ -15,7 +15,7 @@ use Exception;
 
 class ExecuteAiModelJob extends BaseJob
 {
-    public string $queue = 'llm-inference';
+    public $queue = 'llm-inference';
     public int $timeout = 600;
     public int $tries = 3;
 

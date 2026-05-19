@@ -24,7 +24,7 @@ class VectorizeMemoryJob extends BaseJob
      *
      * @var string
      */
-    public string $queue = 'default';
+    public $queue = 'default';
 
     /**
      * Job timeout.

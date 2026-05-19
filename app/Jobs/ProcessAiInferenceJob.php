@@ -31,7 +31,7 @@ class ProcessAiInferenceJob extends BaseJob
      *
      * @var string
      */
-    public string $queue = 'llm-inference';
+    public $queue = 'llm-inference';
 
     /**
      * Job timeout (10 minutes for LLM calls).
