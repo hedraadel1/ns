@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AIModel;
 use App\Models\ApiKey;
+use App\Jobs\ExecuteAiModelJob;
 use App\Services\LogService;
 use App\Services\AI\ProviderInterface;
 use App\Services\AI\ModelSelector;
@@ -22,6 +23,7 @@ use App\Services\AI\GroqProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AiModelController extends Controller
 {
@@ -268,12 +270,14 @@ class AiModelController extends Controller
         }
 
         $provider = $request->provider;
+        $userId = $request->user()?->id ?? 0;
+        $executionId = (string) Str::uuid();
 
-        $this->logService->info('AI model execution started', [
+        $this->logService->info('AI model execution queued', [
             'channel' => 'ai',
             'type' => 'execute',
-            'user_id' => $request->user()?->id,
-            'context' => ['model' => $request->model, 'provider' => $provider],
+            'user_id' => $userId,
+            'context' => ['model' => $request->model, 'provider' => $provider, 'execution_id' => $executionId],
         ]);
 
         $apiKey = $this->keyPool->getKeyForProvider($provider);
@@ -289,7 +293,7 @@ class AiModelController extends Controller
             $this->logService->error('AI model execution failed - no API key', [
                 'channel' => 'ai',
                 'type' => 'execute',
-                'user_id' => $request->user()?->id,
+                'user_id' => $userId,
                 'context' => ['provider' => $provider, 'model' => $request->model],
             ]);
 
@@ -299,57 +303,21 @@ class AiModelController extends Controller
             ], 400);
         }
 
-        $rateLimit = $this->rateLimiter->check($provider, $apiKey);
-        if (!$rateLimit['allowed']) {
-            $this->logService->warning('AI model execution rate limited', [
-                'channel' => 'ai',
-                'type' => 'execute',
-                'user_id' => $request->user()?->id,
-                'context' => ['provider' => $provider, 'model' => $request->model, 'rate_limit' => $rateLimit],
-            ]);
+        ExecuteAiModelJob::dispatch(
+            $userId,
+            $executionId,
+            $provider,
+            $request->model,
+            $request->prompt,
+            $request->messages,
+            $request->options ?? []
+        );
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Rate limit exceeded',
-                'rate_limit' => $rateLimit,
-            ], 429);
-        }
-
-        $providerInstance = $this->resolveProvider($provider, $apiKey);
-        $execRequest = [
-            'model' => $request->model,
-            'prompt' => $request->prompt,
-            'messages' => $request->messages,
-            'options' => $request->options ?? [],
-        ];
-
-        $startTime = microtime(true);
-        $result = $providerInstance->execute($execRequest);
-        $durationMs = round((microtime(true) - $startTime) * 1000, 2);
-
-        if ($result['success']) {
-            $this->rateLimiter->recordSuccess($provider, $apiKey);
-            $this->keyPool->getKeyForProvider($provider);
-        } else {
-            $this->rateLimiter->recordFailure($provider, $apiKey);
-        }
-
-        $result['request_duration_ms'] = $durationMs;
-        $result['rate_limit'] = $this->rateLimiter->getStatus($provider, $apiKey);
-
-        $this->logService->info('AI model execution completed', [
-            'channel' => 'ai',
-            'type' => 'execute',
-            'user_id' => $request->user()?->id,
-            'context' => [
-                'model' => $request->model,
-                'provider' => $provider,
-                'success' => $result['success'] ?? false,
-                'duration_ms' => $durationMs,
-            ],
-        ]);
-
-        return response()->json($result);
+        return response()->json([
+            'success' => true,
+            'message' => 'AI execution request queued',
+            'execution_id' => $executionId,
+        ], 202);
     }
 
     public function executeWithFallback(Request $request)

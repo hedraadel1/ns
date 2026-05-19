@@ -8,8 +8,12 @@ class Message extends BaseModel
 {
     protected $fillable = [
         'conversation_id',
+        'sender',
+        'sender_name',
         'sender_type',
         'sender_id',
+        'channel',
+        'thread_id',
         'direction',
         'content_type',
         'content',

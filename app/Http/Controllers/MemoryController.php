@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Events\MemoryIndexed;
+use App\Jobs\ExtractMemoryJob;
 use App\Jobs\SyncMemoryJob;
 use App\Models\Contact;
+use App\Models\Conversation;
 use App\Services\LogService;
 use App\Services\Memory\WorkingMemoryService;
 use App\Services\Memory\EpisodicMemoryService;
@@ -113,12 +115,7 @@ class MemoryController extends Controller
                     }
 
                     if ($result && $contact = Contact::find($validated['contactId'])) {
-                        event(new MemoryIndexed(
-                            $contact,
-                            'episodic',
-                            ['content' => $validated['content']],
-                            $validated['metadata'] ?? []
-                        ));
+                        // Memory stored successfully; Pinecone indexing will emit MemoryIndexed when complete.
                     }
                     break;
                 case 'semantic':
@@ -130,12 +127,7 @@ class MemoryController extends Controller
                         );
 
                         if ($result && $contact = Contact::find($validated['contactId'])) {
-                            event(new MemoryIndexed(
-                                $contact,
-                                'semantic',
-                                ['content' => $validated['content']],
-                                $validated['metadata'] ?? []
-                            ));
+                            // Memory stored successfully; indexing will emit MemoryIndexed when available.
                         }
                     }
                     break;
@@ -149,12 +141,7 @@ class MemoryController extends Controller
                         );
 
                         if ($result && $contact = Contact::find($validated['contactId'])) {
-                            event(new MemoryIndexed(
-                                $contact,
-                                'structured',
-                                ['data' => $validated['data'] ?? []],
-                                $validated['metadata'] ?? []
-                            ));
+                            // Structured memory stored successfully; SyncMemoryJob will keep memory services in sync.
                             SyncMemoryJob::dispatch($validated['contactId'], 'structured');
                         }
                     }
@@ -510,69 +497,28 @@ class MemoryController extends Controller
             'contactId' => 'required|integer|exists:contacts,id',
         ]);
 
-        try {
-            $content = '';
-            $metadata = [];
-
-            switch ($validated['type']) {
-                case 'episodic':
-                    $memory = $this->episodicMemoryService->retrieve($id, 1)->first();
-                    if ($memory) {
-                        $content = $memory->content ?? '';
-                        $metadata = json_decode($memory->metadata ?: '{}', true);
-                        $metadata['memory_type'] = 'episodic';
-                        $metadata['originalId'] = $memory->id;
-                    }
-                    break;
-                case 'structured':
-                    if ($this->structuredMemoryService) {
-                        // Get the structured memory (we'd need a method to get by ID)
-                        // For simplicity, we'll skip this for now
-                        return response()->json([
-                            'message' => 'Structured memory indexing not implemented'
-                        ], 501);
-                    }
-                    break;
-            }
-
-            if ($this->semanticMemoryService && !empty($content)) {
-                $result = $this->semanticMemoryService->store(
-                    $validated['contactId'],
-                    $content,
-                    $metadata
-                );
-
-                if ($result) {
-                    $this->logService->info('Memory indexed', [
-                        'channel' => 'memory',
-                        'type' => 'index',
-                        'related_id' => $id,
-                        'related_type' => 'App\Models\Memory',
-                        'user_id' => $request->user()?->id,
-                        'context' => ['memory_type' => $validated['type']],
-                    ]);
-
-                    return response()->json([
-                        'message' => 'Memory indexed successfully for semantic search',
-                        'id' => $id
-                    ]);
-                }
-            }
-
+        $conversation = Conversation::find($id);
+        if (! $conversation) {
             return response()->json([
-                'message' => 'Failed to index memory'
-            ], 500);
-        } catch (\Exception $e) {
-            $this->logService->error('Memory indexing failed', [
-                'channel' => 'memory',
-                'type' => 'index',
-                'context' => ['id' => $id, 'error' => $e->getMessage()],
-            ]);
-
-            return response()->json([
-                'message' => 'An error occurred while indexing the memory',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Conversation not found for memory extraction',
+            ], 404);
         }
+
+        ExtractMemoryJob::dispatch($conversation->id);
+
+        $this->logService->info('Memory extraction queued', [
+            'channel' => 'memory',
+            'type' => 'extract',
+            'related_id' => $conversation->id,
+            'related_type' => 'App\Models\Conversation',
+            'user_id' => $request->user()?->id,
+            'context' => ['memory_type' => $validated['type']],
+        ]);
+
+        return response()->json([
+            'message' => 'Memory extraction dispatched',
+            'conversation_id' => $conversation->id,
+            'status' => 'queued',
+        ], 202);
     }
 }

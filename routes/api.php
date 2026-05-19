@@ -25,6 +25,14 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api']], function () {
     Route::post('/webhooks/waha', [\App\Http\Controllers\WebhookController::class, 'handleWahaWebhook'])
         ->name('webhooks.waha');
 
+    Route::prefix('monitoring')->group(function () {
+        Route::get('/health', [\App\Http\Controllers\Monitoring\HealthController::class, 'health']);
+        Route::get('/health/reverb', [\App\Http\Controllers\Monitoring\HealthController::class, 'reverb']);
+        Route::get('/health/queue', [\App\Http\Controllers\Monitoring\HealthController::class, 'queue']);
+        Route::get('/metrics', [\App\Http\Controllers\Monitoring\MetricsController::class, 'metrics']);
+        Route::get('/metrics/websocket', [\App\Http\Controllers\Monitoring\MetricsController::class, 'websocket']);
+    });
+
     // Sanctum authentication routes
     Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])
         ->name('login');
@@ -111,6 +119,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
     Route::post('/memories/{id}/index', [\App\Http\Controllers\MemoryController::class, 'indexMemory'])
         ->name('memories.indexMemory');
 
+    Route::middleware(['can:viewDlq'])->group(function () {
+        Route::get('/admin/dlq', [\App\Http\Controllers\Admin\DlqController::class, 'index']);
+        Route::post('/admin/dlq/{id}/retry', [\App\Http\Controllers\Admin\DlqController::class, 'retry']);
+        Route::delete('/admin/dlq/{id}', [\App\Http\Controllers\Admin\DlqController::class, 'destroy']);
+        Route::post('/admin/dlq/batch-retry', [\App\Http\Controllers\Admin\DlqController::class, 'batchRetry']);
+    });
+
     /**
      * AI Models Hub Routes
      */
@@ -145,7 +160,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('ai-models.fallback-chain');
     Route::get('/ai-models/budget', [\App\Http\Controllers\AiModelController::class, 'budgetStatus'])
         ->name('ai-models.budget');
-    
+
     // New AI Models Hub endpoints for UP-002
     Route::post('/ai/providers', [\App\Http\Controllers\AiProviderController::class, 'store'])
         ->name('ai.providers.store');

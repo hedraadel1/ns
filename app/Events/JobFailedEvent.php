@@ -2,17 +2,15 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithBroadcasting;
+use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class JobFailedEvent
+class JobFailedEvent implements ShouldBroadcast
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
         public string $jobClass,
@@ -20,4 +18,20 @@ class JobFailedEvent
         public string $errorMessage,
         public string $jobData
     ) {}
+
+    public function broadcastOn(): PrivateChannel
+    {
+        return new PrivateChannel('admin.dlq');
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'job_class' => $this->jobClass,
+            'queue' => $this->queue,
+            'error_message' => $this->errorMessage,
+            'job_data' => json_decode($this->jobData, true),
+            'timestamp' => now()->toDateTimeString(),
+        ];
+    }
 }

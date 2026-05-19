@@ -1,55 +1,97 @@
 <template>
-  <nav class="breadcrumbs">
-    <span
-      v-for="(item, i) in items"
-      :key="i"
-      :class="['crumb', { active: item.active }]"
-    >
-      <a v-if="item.href" :href="item.href">{{ item.label }}</a>
-      <span v-else>{{ item.label }}</span>
-    </span>
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumb-list">
+      <li v-for="(item, index) in breadcrumbItems" :key="index" class="breadcrumb-item">
+        <span
+          v-if="index < breadcrumbItems.length - 1"
+          class="breadcrumb-link"
+          @click="navigateTo(item)"
+        >
+          {{ item.label }}
+        </span>
+        <span v-else class="breadcrumb-current">
+          {{ item.label }}
+        </span>
+        <span v-if="index < breadcrumbItems.length - 1" class="breadcrumb-separator">/</span>
+      </li>
+    </ol>
   </nav>
 </template>
 
 <script setup>
-import { defineProps } from 'vue'
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
-defineProps({
-  items: {
-    type: Array,
-    default: () => [],
-  },
-})
+const route = useRoute();
+const router = useRouter();
+
+const breadcrumbItems = computed(() => {
+  const items = [];
+  const matched = route.matched.filter(r => r.meta?.breadcrumb);
+
+  matched.forEach((r, i) => {
+    items.push({
+      label: r.meta.breadcrumb,
+      path: r.path,
+    });
+  });
+
+  // If no matched routes, use current route
+  if (items.length === 0) {
+    items.push({
+      label: route.meta?.breadcrumb || 'Home',
+      path: route.path,
+    });
+  }
+
+  return items;
+});
+
+const navigateTo = (item) => {
+  router.push(item.path);
+};
 </script>
 
 <style scoped>
 .breadcrumbs {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
 }
 
-.crumb {
-  color: #888;
+.breadcrumb-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
 }
 
-.crumb a {
-  color: #888;
-  text-decoration: none;
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.crumb a:hover {
-  color: #4ade80;
+.breadcrumb-link {
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: color 150ms ease;
 }
 
-.crumb.active {
-  color: #fff;
+.breadcrumb-link:hover {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
 }
 
-.crumb:not(:last-child)::after {
-  content: '/';
-  margin-left: 0.5rem;
-  color: #666;
+.breadcrumb-current {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.breadcrumb-separator {
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0 2px;
 }
 </style>

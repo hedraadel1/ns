@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use App\Events\MemoryIndexed;
 use App\Events\WorkflowCompleted;
@@ -12,8 +14,13 @@ use App\Events\MessageReceived;
 use App\Listeners\IndexMemory;
 use App\Listeners\LogJobFailed;
 use App\Listeners\LogWorkflowCompleted;
+use App\Listeners\NotifyJobFailed;
 use App\Listeners\ProcessContactCreated;
 use App\Listeners\ProcessMessageReceived;
+use App\Models\ConversationSession;
+use Illuminate\Queue\Events\JobFailed;
+use App\Models\User;
+use App\Policies\SessionPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -69,7 +76,19 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ContactCreated::class, [ProcessContactCreated::class, 'handle']);
         Event::listen(MessageReceived::class, [ProcessMessageReceived::class, 'handle']);
         Event::listen(WorkflowCompleted::class, [LogWorkflowCompleted::class, 'handle']);
-        Event::listen(\Illuminate\Queue\Events\JobFailed::class, [LogJobFailed::class, 'handle']);
+        Event::listen(JobFailed::class, [LogJobFailed::class, 'handle']);
+        Event::listen(JobFailed::class, [NotifyJobFailed::class, 'handle']);
+
+        // Register broadcast authorization policies
+        Gate::policy(ConversationSession::class, SessionPolicy::class);
+        Gate::define('viewBatch', fn (User $user, string $batchId): bool => in_array($user->email, config('broadcasting.admin_emails', []), true));
+        Gate::define('viewDlq', fn (User $user): bool => in_array($user->email, config('broadcasting.admin_emails', []), true));
+
+        // Register broadcast auth routes and load channel definitions
+        Broadcast::routes(['middleware' => ['web', 'auth:sanctum']]);
+        if (file_exists(base_path('routes/channels.php'))) {
+            require base_path('routes/channels.php');
+        }
 
         // Register macros for common operations
         $this->registerMacros();

@@ -11,12 +11,15 @@
           </p>
         </div>
 
-        <button
-          @click="isCreateModalOpen = true"
-          class="flex items-center gap-2 rounded-lg bg-green-500/20 px-4 py-2 text-sm font-semibold text-green-300 transition hover:bg-green-500/30"
-        >
-          <span>+ New Conversation</span>
-        </button>
+        <div class="flex flex-col items-end gap-3">
+          <ConnectionStatus />
+          <button
+            @click="isCreateModalOpen = true"
+            class="flex items-center gap-2 rounded-lg bg-green-500/20 px-4 py-2 text-sm font-semibold text-green-300 transition hover:bg-green-500/30"
+          >
+            <span>+ New Conversation</span>
+          </button>
+        </div>
       </div>
 
       <!-- Filters -->
@@ -27,7 +30,7 @@
           placeholder="Search conversations..."
           class="flex-1 rounded-lg border border-zinc-700/50 bg-zinc-900/50 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-green-500/50 focus:outline-none"
         />
-        
+
         <select
           v-model="selectedChannel"
           class="rounded-lg border border-zinc-700/50 bg-zinc-900/50 px-3 py-2 text-sm text-white focus:border-green-500/50 focus:outline-none"
@@ -170,7 +173,7 @@
     <div v-if="isCreateModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div class="rounded-lg border border-zinc-700/50 bg-zinc-950 p-6 max-w-md w-full">
         <h3 class="text-lg font-semibold text-white">Create Conversation</h3>
-        
+
         <div class="mt-4 space-y-3">
           <div>
             <label class="text-sm font-medium text-zinc-400">Select Contact</label>
@@ -230,7 +233,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useEcho } from '../composables/useEcho';
+import ConnectionStatus from '../Components/ConnectionStatus.vue';
 
 // State
 const conversations = ref([])
@@ -257,16 +262,103 @@ const newConversation = ref({
   subject: '',
 })
 
+const { isAvailable, subscribePrivate, leaveChannel, withPollingFallback } = useEcho();
+let echoChannel = null
+
+function leaveConversationChannel() {
+  if (echoChannel) {
+    echoChannel.stopListening('.App\\Events\\MessageSent')
+    echoChannel.stopListening('.App\\Events\\TokenStreamed')
+    echoChannel.stopListening('.App\\Events\\MessageCompleted')
+  }
+
+  leaveChannel(`conversation.${selectedConversation.value?.id}`)
+  echoChannel = null
+}
+
+function subscribeConversationChannel(conversationId) {
+  if (!conversationId) {
+    return
+  }
+
+  leaveConversationChannel()
+
+  const channelName = `conversation.${conversationId}`
+
+  echoChannel = withPollingFallback(
+    () => subscribePrivate(
+      channelName,
+      {
+        '.App\\Events\\MessageSent': (event) => {
+          if (!selectedConversation.value || selectedConversation.value.id !== conversationId) {
+            return
+          }
+
+          selectedConversation.value.messages = selectedConversation.value.messages || []
+          selectedConversation.value.messages.push({
+            id: event.id,
+            role: event.sender === 'user' ? 'user' : 'agent',
+            content: event.content,
+            created_at: event.timestamp,
+          })
+        },
+        '.App\\Events\\TokenStreamed': (event) => {
+          if (!selectedConversation.value || selectedConversation.value.id !== conversationId) {
+            return
+          }
+
+          const messages = selectedConversation.value.messages || []
+          const lastMessage = messages[messages.length - 1]
+          if (lastMessage && lastMessage.role === 'agent' && lastMessage.id === event.message_id) {
+            lastMessage.content += event.token
+          }
+        },
+        '.App\\Events\\MessageCompleted': (event) => {
+          if (!selectedConversation.value || selectedConversation.value.id !== conversationId) {
+            return
+          }
+
+          const messages = selectedConversation.value.messages || []
+          const lastMessage = messages[messages.length - 1]
+          if (lastMessage && lastMessage.id === event.message_id) {
+            lastMessage.content = event.final_message
+          }
+        },
+      },
+      () => {
+        loadMessages(conversationId)
+        return null
+      }
+    ),
+    () => {
+      loadMessages(conversationId)
+      return null
+    }
+  )
+}
+
+watch(selectedConversation, (conversation) => {
+  if (conversation) {
+    subscribeConversationChannel(conversation.id)
+  } else {
+    leaveConversationChannel()
+  }
+})
+
+onUnmounted(() => {
+  leaveConversationChannel()
+})
+
 // Filtered conversations
 const filteredConversations = computed(() => {
   return conversations.value.filter(conv => {
-    const matchesSearch = !searchTerm.value || 
+    const matchesSearch = !searchTerm.value ||
       conv.contact_name?.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
       conv.last_message?.toLowerCase().includes(searchTerm.value.toLowerCase())
-    
+
     const matchesChannel = !selectedChannel.value || conv.channel === selectedChannel.value
     const matchesStatus = !selectedStatus.value || conv.status === selectedStatus.value
-    
+
     return matchesSearch && matchesChannel && matchesStatus
   })
 })
@@ -275,14 +367,14 @@ const filteredConversations = computed(() => {
 async function loadConversations() {
   loadingConversations.value = true
   conversationsError.value = null
-  
+
   try {
     const response = await fetch('/api/v1/conversations', {
       headers: { 'Accept': 'application/json' },
     })
-    
+
     if (!response.ok) throw new Error('Failed to load conversations')
-    
+
     const data = await response.json()
     conversations.value = data.data || data || []
   } catch (err) {
@@ -299,9 +391,9 @@ async function loadContacts() {
     const response = await fetch('/api/v1/contacts', {
       headers: { 'Accept': 'application/json' },
     })
-    
+
     if (!response.ok) throw new Error('Failed to load contacts')
-    
+
     const data = await response.json()
     contacts.value = data.data || data || []
   } catch (err) {
@@ -318,14 +410,14 @@ async function selectConversation(conversation) {
 // Load messages for conversation
 async function loadMessages(conversationId) {
   loadingMessages.value = true
-  
+
   try {
     const response = await fetch(`/api/v1/conversations/${conversationId}/messages`, {
       headers: { 'Accept': 'application/json' },
     })
-    
+
     if (!response.ok) throw new Error('Failed to load messages')
-    
+
     const data = await response.json()
     if (selectedConversation.value) {
       selectedConversation.value.messages = data.data || data || []
@@ -340,9 +432,9 @@ async function loadMessages(conversationId) {
 // Send message
 async function sendMessage() {
   if (!messageInput.value || !selectedConversation.value) return
-  
+
   sendingMessage.value = true
-  
+
   try {
     const response = await fetch(`/api/v1/conversations/${selectedConversation.value.id}/send-message`, {
       method: 'POST',
@@ -355,9 +447,9 @@ async function sendMessage() {
         type: 'text',
       }),
     })
-    
+
     if (!response.ok) throw new Error('Failed to send message')
-    
+
     messageInput.value = ''
     await loadMessages(selectedConversation.value.id)
   } catch (err) {
@@ -370,7 +462,7 @@ async function sendMessage() {
 // Create conversation
 async function createConversation() {
   if (!newConversation.value.contact_id) return
-  
+
   try {
     const response = await fetch('/api/v1/conversations', {
       method: 'POST',
@@ -380,9 +472,9 @@ async function createConversation() {
       },
       body: JSON.stringify(newConversation.value),
     })
-    
+
     if (!response.ok) throw new Error('Failed to create conversation')
-    
+
     isCreateModalOpen.value = false
     newConversation.value = { contact_id: '', channel: 'whatsapp', subject: '' }
     await loadConversations()
@@ -410,12 +502,12 @@ function formatDate(date) {
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
-  
+
   if (diffMins < 1) return 'now'
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  
+
   return d.toLocaleDateString()
 }
 

@@ -1,9 +1,37 @@
 <?php
+
 namespace App\Events;
-use App\Models\Contact;
-use App\Models\Conversation;
-class MessageReceived extends Event
+
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Broadcasting\SerializesModels;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+
+class MessageReceived extends Event implements ShouldBroadcastNow
 {
-    public function __construct(public Contact $contact, public Conversation $conversation, public string $message, public array $metadata = [])
-    { parent::__construct(); }
+    use InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public string $conversationId,
+        public string $messageId,
+        public string $agentId,
+        public array $responseData = [],
+    ) {
+        parent::__construct();
+    }
+
+    public function broadcastOn(): PrivateChannel
+    {
+        return new PrivateChannel("conversation.{$this->conversationId}");
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'id' => $this->messageId,
+            'agent_id' => $this->agentId,
+            'data' => $this->responseData,
+            'timestamp' => $this->timestamp->toDateTimeString(),
+        ];
+    }
 }

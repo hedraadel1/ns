@@ -12,7 +12,20 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                mono: ['JetBrains Mono', ...defaultTheme.fontFamily.mono],
+            },
+            colors: {
+                'surface-high': '#0B0E14',
+                'surface-mid': '#161B22',
+                'action-primary': '#007AFF',
+                'ai-core': '#6366F1',
+                'status-success': '#10B981',
+                'status-warning': '#F59E0B',
+                'status-error': '#EF4444',
+            },
+            letterSpacing: {
+                'tight': '-0.02em',
             },
         },
     },
