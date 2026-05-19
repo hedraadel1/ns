@@ -6,7 +6,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   currentTokens: {
     type: Number,
     default: 0,

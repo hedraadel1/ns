@@ -12,16 +12,18 @@ import { useEchoStore } from '../stores/useEchoStore';
 const echoStore = useEchoStore();
 
 const statusText = computed(() => {
+  if (echoStore.useFallback) return 'Polling fallback';
   if (echoStore.error) return 'Disconnected';
-  if (echoStore.reconnecting) return 'Reconnecting';
-  if (echoStore.connected) return 'Connected';
+  if (echoStore.isReconnecting) return 'Reconnecting';
+  if (echoStore.isConnected) return 'Connected';
   return 'Offline';
 });
 
 const statusClass = computed(() => {
+  if (echoStore.useFallback) return 'status-fallback';
   if (echoStore.error) return 'status-disconnected';
-  if (echoStore.reconnecting) return 'status-reconnecting';
-  if (echoStore.connected) return 'status-connected';
+  if (echoStore.isReconnecting) return 'status-reconnecting';
+  if (echoStore.isConnected) return 'status-connected';
   return 'status-offline';
 });
 </script>
@@ -58,6 +60,10 @@ const statusClass = computed(() => {
 
 .status-disconnected .status-dot {
   background: #ef4444;
+}
+
+.status-fallback .status-dot {
+  background: #6366f1;
 }
 
 .status-offline .status-dot {

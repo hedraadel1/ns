@@ -3,9 +3,73 @@ import { useEchoStore } from '../stores/useEchoStore';
 export function useEcho() {
   const echoStore = useEchoStore();
   let currentChannel = null;
+  let fallbackTimer = null;
+  let listenersAttached = false;
 
   function isAvailable() {
     return typeof window !== 'undefined' && !!window.Echo;
+  }
+
+  function clearFallbackTimer() {
+    if (fallbackTimer) {
+      window.clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+  }
+
+  function startFallbackTimer() {
+    clearFallbackTimer();
+    fallbackTimer = window.setTimeout(() => {
+      echoStore.enableFallback();
+      console.warn('[Echo] switching to polling fallback after connection timeout');
+    }, 30000);
+  }
+
+  function ensureConnectionListeners() {
+    if (!isAvailable() || listenersAttached) {
+      return;
+    }
+
+    const connection = window.Echo?.connector?.pusher?.connection;
+    if (!connection) {
+      return;
+    }
+
+    listenersAttached = true;
+
+    connection.bind('connected', () => {
+      echoStore.setConnectionStatus('connected');
+      echoStore.disableFallback();
+      clearFallbackTimer();
+    });
+
+    connection.bind('disconnected', () => {
+      echoStore.setConnectionStatus('disconnected');
+      startFallbackTimer();
+    });
+
+    connection.bind('error', (error) => {
+      echoStore.setConnectionStatus('error', error?.message || 'WebSocket error');
+      startFallbackTimer();
+    });
+
+    connection.bind('failed', (error) => {
+      echoStore.setConnectionStatus('error', error?.message || 'WebSocket failed');
+      startFallbackTimer();
+    });
+
+    connection.bind('state_change', (states) => {
+      if (states.current === 'connecting') {
+        echoStore.setConnectionStatus('reconnecting');
+      } else if (states.current === 'connected') {
+        echoStore.setConnectionStatus('connected');
+        echoStore.disableFallback();
+        clearFallbackTimer();
+      } else if (states.current === 'disconnected' || states.current === 'failed') {
+        echoStore.setConnectionStatus('disconnected');
+        startFallbackTimer();
+      }
+    });
   }
 
   function leaveChannel(channelName) {
@@ -16,15 +80,17 @@ export function useEcho() {
     try {
       window.Echo.leaveChannel(channelName);
       currentChannel = null;
-      echoStore.reset();
+      echoStore.setChannel(null);
     } catch (error) {
       console.warn('Failed to leave Echo channel', error);
     }
   }
 
   function subscribePrivate(channelName, listeners = {}, onSubscribed = null) {
-    if (!isAvailable() || !channelName) {
-      echoStore.setError('WebSocket unavailable');
+    ensureConnectionListeners();
+
+    if (!isAvailable() || !channelName || echoStore.shouldUsePolling) {
+      echoStore.setError('WebSocket unavailable or polling fallback active');
       return null;
     }
 
@@ -38,7 +104,7 @@ export function useEcho() {
 
     if (typeof onSubscribed === 'function') {
       currentChannel.subscribed(() => {
-        echoStore.setConnected();
+        echoStore.setConnectionStatus('connected');
         onSubscribed();
       });
     }
@@ -47,8 +113,10 @@ export function useEcho() {
   }
 
   function subscribePresence(channelName, listeners = {}, onSubscribed = null) {
-    if (!isAvailable() || !channelName) {
-      echoStore.setError('WebSocket unavailable');
+    ensureConnectionListeners();
+
+    if (!isAvailable() || !channelName || echoStore.shouldUsePolling) {
+      echoStore.setError('WebSocket unavailable or polling fallback active');
       return null;
     }
 
@@ -71,7 +139,7 @@ export function useEcho() {
 
     if (typeof onSubscribed === 'function') {
       currentChannel.subscribed(() => {
-        echoStore.setConnected();
+        echoStore.setConnectionStatus('connected');
         onSubscribed();
       });
     }
@@ -79,29 +147,49 @@ export function useEcho() {
     return currentChannel;
   }
 
-  function syncMissedEvents(fetchFn) {
+  function parseResponse(response) {
+    if (!response) {
+      return Promise.resolve([]);
+    }
+    if (typeof response.json === 'function') {
+      return response.json();
+    }
+    if (response.data !== undefined) {
+      return Promise.resolve(response.data);
+    }
+    return Promise.resolve(response);
+  }
+
+  function syncMissedEvents(eventIds, fetchFn) {
     if (typeof fetchFn !== 'function') {
       return Promise.resolve([]);
     }
 
-    return fetchFn()
-      .then((response) => response.json())
+    return Promise.resolve(fetchFn(eventIds))
+      .then(parseResponse)
       .then((data) => data || [])
       .catch((error) => {
-        echoStore.setError(error.message || 'Failed to sync missed events');
+        echoStore.setError(error?.message || 'Failed to sync missed events');
         return [];
       });
   }
 
   function withPollingFallback(wsCallback, pollCallback) {
-    if (echoStore.error || !isAvailable()) {
+    if (!isAvailable() || echoStore.shouldUsePolling) {
       return pollCallback();
     }
 
     try {
-      return wsCallback();
+      const result = wsCallback();
+      if (result && typeof result.then === 'function') {
+        return result.catch((error) => {
+          echoStore.setError(error?.message || 'WebSocket callback failed');
+          return pollCallback();
+        });
+      }
+      return result;
     } catch (error) {
-      echoStore.setError(error.message || 'WebSocket callback failed');
+      echoStore.setError(error?.message || 'WebSocket callback failed');
       return pollCallback();
     }
   }

@@ -11,6 +11,8 @@ export const useSystem = defineStore('system', {
         tokenBudget: 6000,
         providers: [],
         rateLimitInfo: null,
+        pageLoading: false,
+        pageLoadingProgress: 0,
     }),
     actions: {
         setConnectionState(state) { this.connectionState = state; },
@@ -22,5 +24,9 @@ export const useSystem = defineStore('system', {
         setProviders(providers) { this.providers = providers; },
         setRateLimit(info) { this.rateLimitInfo = info; },
         clearRateLimit() { this.rateLimitInfo = null; },
+        setPageLoading(loading) { this.pageLoading = loading; },
+        setPageLoadingProgress(progress) { this.pageLoadingProgress = Math.min(progress, 100); },
+        startPageLoading() { this.pageLoading = true; this.pageLoadingProgress = 0; },
+        completePageLoading() { this.pageLoading = false; this.pageLoadingProgress = 100; },
     },
 });

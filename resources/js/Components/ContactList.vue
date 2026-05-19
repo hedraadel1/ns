@@ -91,30 +91,54 @@
           <button
             type="button"
             class="w-full border-l-4 px-4 py-4 text-left transition hover:bg-zinc-900/70"
-            :class="contact.id === selectedId ? 'border-l-green-400 bg-zinc-900/80' : 'border-l-transparent bg-transparent'"
-            @click="emit('select', contact)"
+            :class="[
+              props.bulkMode && selectedSet.has(contact.id) ? 'border-l-emerald-400 bg-slate-900/80' : '',
+              !props.bulkMode && contact.id === selectedId ? 'border-l-green-400 bg-zinc-900/80' : 'border-l-transparent bg-transparent',
+            ]"
+            @pointerdown.prevent="beginPress(contact)"
+            @pointerup.prevent="endPress(contact)"
+            @pointerleave="cancelPress"
+            @pointercancel="cancelPress"
+            @keydown.enter.prevent="endPress(contact)"
+            @contextmenu.prevent="openContextMenu(contact, $event)"
           >
             <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <p class="truncate text-sm font-black uppercase tracking-wide text-white">
-                    {{ displayName(contact) }}
-                  </p>
-                  <span
-                    class="shrink-0 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.25em]"
-                    :class="statusClass(contact.status)"
-                  >
-                    {{ displayStatus(contact.status) }}
-                  </span>
+              <div class="flex items-start gap-3">
+                <div v-if="props.bulkMode" class="flex items-center">
+                  <label class="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-white/20 bg-zinc-950 transition focus-within:ring-2 focus-within:ring-emerald-400/40">
+                    <input
+                      type="checkbox"
+                      class="peer absolute h-full w-full opacity-0"
+                      :checked="selectedSet.has(contact.id)"
+                      @change.stop.prevent="emit('toggle-selection', contact)"
+                    />
+                    <span
+                      class="pointer-events-none h-3.5 w-3.5 rounded-sm border border-white/20 bg-transparent transition peer-checked:bg-emerald-400 peer-checked:border-emerald-400"
+                    />
+                  </label>
                 </div>
-                <p class="mt-1 truncate text-xs uppercase tracking-[0.25em] text-zinc-500">
-                  {{ contact.title || contact.role || 'Contact' }}
-                  <span v-if="contact.company || contact.organization" class="text-zinc-600">·</span>
-                  <span v-if="contact.company || contact.organization">{{ contact.company || contact.organization }}</span>
-                </p>
-                <div class="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
-                  <span v-if="contact.email" class="border border-zinc-800 bg-zinc-950 px-2 py-1">{{ contact.email }}</span>
-                  <span v-if="contact.phone" class="border border-zinc-800 bg-zinc-950 px-2 py-1">{{ contact.phone }}</span>
+
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <p class="truncate text-sm font-black uppercase tracking-wide text-white">
+                      {{ displayName(contact) }}
+                    </p>
+                    <span
+                      class="shrink-0 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.25em]"
+                      :class="statusClass(contact.status)"
+                    >
+                      {{ displayStatus(contact.status) }}
+                    </span>
+                  </div>
+                  <p class="mt-1 truncate text-xs uppercase tracking-[0.25em] text-zinc-500">
+                    {{ contact.title || contact.role || 'Contact' }}
+                    <span v-if="contact.company || contact.organization" class="text-zinc-600">·</span>
+                    <span v-if="contact.company || contact.organization">{{ contact.company || contact.organization }}</span>
+                  </p>
+                  <div class="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
+                    <span v-if="contact.email" class="border border-zinc-800 bg-zinc-950 px-2 py-1">{{ contact.email }}</span>
+                    <span v-if="contact.phone" class="border border-zinc-800 bg-zinc-950 px-2 py-1">{{ contact.phone }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -141,6 +165,14 @@ const props = defineProps({
   selectedId: {
     type: [String, Number, null],
     default: null,
+  },
+  bulkMode: {
+    type: Boolean,
+    default: false,
+  },
+  selectedIds: {
+    type: Array,
+    default: () => [],
   },
   loading: {
     type: Boolean,
@@ -173,9 +205,12 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['refresh', 'select', 'update:search', 'update:statusFilter'])
+const emit = defineEmits(['refresh', 'select', 'toggle-selection', 'enter-bulk-mode', 'toggle-selection', 'enter-bulk-mode', 'update:search', 'update:statusFilter'])
 const searchInput = ref(props.search || '')
+const selectedSet = computed(() => new Set(props.selectedIds || []))
 let searchDebounce = null
+let pressTimer = null
+let longPressSuppressed = false
 
 watch(
   () => props.search,
@@ -188,7 +223,54 @@ onBeforeUnmount(() => {
   if (searchDebounce) {
     clearTimeout(searchDebounce)
   }
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+  }
 })
+
+function beginPress(contact) {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+  }
+  longPressSuppressed = false
+  pressTimer = window.setTimeout(() => {
+    longPressSuppressed = true
+    emit('enter-bulk-mode', contact)
+    emit('toggle-selection', contact)
+    pressTimer = null
+  }, 500)
+}
+
+function endPress(contact) {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+  if (longPressSuppressed) {
+    longPressSuppressed = false
+    return
+  }
+  if (props.bulkMode) {
+    emit('toggle-selection', contact)
+  } else {
+    emit('select', contact)
+  }
+}
+
+function cancelPress() {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+function openContextMenu(contact, event) {
+  emit('contextmenu', {
+    contact,
+    x: event.clientX,
+    y: event.clientY,
+  })
+}
 
 function onSearchInput(event) {
   searchInput.value = event.target.value

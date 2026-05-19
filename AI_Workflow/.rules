@@ -1,23 +1,19 @@
 # AI AGENT STRICT DEVELOPMENT PROTOCOL
 
-#Please follow this 3-Phase Workflow for This new feature or update which in this report :-
-
-```report
-
-```
+#Please follow this 3-Phase Workflow for This new feature or update which in this new audit report files
 
 ## PHASE 1: BLUEPRINT GENERATION
-When the user asks to plan a feature, you must create a detailed Markdown file in `_AI_Workflow/Updates_Docs/` named `UP-[ID]_[FeatureName].md`. You MUST use the "UPDATE BLUEPRINT TEMPLATE".
+plan a feature, you must create a detailed Markdown file in `_AI_Workflow/Updates_Docs/` named `UP-[ID]_[FeatureName].md`. You MUST use the "UPDATE BLUEPRINT TEMPLATE".
 
 ## PHASE 2: TASK SPLITTING
-Once the user approves the Blueprint, you MUST NOT write application code yet. You must break the execution checklist into separate Markdown files inside `_AI_Workflow/Tasks_Docs/` named `[UpdateID]_Task-[ID]_[Name].md`. You MUST use the "TASK DOCUMENT TEMPLATE".
+Once finishing the Blueprints, you MUST NOT write application code yet. You must break the execution checklist into separate Markdown files inside `_AI_Workflow/Tasks_Docs/` named `[UpdateID]_Task-[ID]_[Name].md`. You MUST use the "TASK DOCUMENT TEMPLATE".
 
 ## PHASE 3: EXECUTION & REPORTING
-1. Ask the user for permission to start Task 1.
+1. Ask the user for permission to start the Tasks.
 2. Once permitted, write the complete, production-ready code for that task. NO PLACEHOLDERS.
 3. Verify dependencies and existing logic.
 4. Report back to the user detailing what was done, and ask them to manually test it.
-5. If the user approves, you MUST:
+5. After finishing every task :
    a. Rename the task file to start with `Finished_`.
    b. Open the main Blueprint file in `Updates_Docs/` and update the Checklist (check off the task).
    c. Provide a suggested `git commit` message.

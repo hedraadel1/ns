@@ -32,6 +32,7 @@
       </div>
 
       <article v-else class="space-y-4">
+        <NxContactCard3D :contact="contact" />
         <div class="border border-zinc-800 bg-zinc-950 p-5">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
@@ -52,6 +53,16 @@
             >
               {{ displayStatus }}
             </span>
+          </div>
+
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs text-zinc-300">
+              <NxPresenceDot :last-seen-at="contact.last_activity_at || contact.last_seen_at" />
+              <span>{{ presenceLabel }}</span>
+            </div>
+            <div v-if="contact.channels?.length" class="w-full">
+              <NxChannelStatus :channels="contact.channels" @select="selectedChannel = $event" />
+            </div>
           </div>
 
           <div class="mt-5 flex flex-wrap gap-2 text-xs text-zinc-300">
@@ -136,7 +147,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import NxContactCard3D from '../Components/NxContactCard3D.vue'
+import NxChannelStatus from '../Components/NxChannelStatus.vue'
+import NxPresenceDot from '../Components/NxPresenceDot.vue'
 
 const props = defineProps({
   contact: {
@@ -174,6 +188,13 @@ const tags = computed(() => {
 })
 
 const notes = computed(() => props.contact?.notes || props.contact?.summary || props.contact?.bio || '')
+
+const selectedChannel = ref(null)
+
+const presenceLabel = computed(() => {
+  if (!props.contact?.last_activity_at && !props.contact?.last_seen_at) return 'Last active unknown'
+  return 'Recent activity'
+})
 
 function statusClass(status) {
   const value = String(status || '').toLowerCase()

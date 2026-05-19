@@ -3,7 +3,7 @@
     <button class="loader-pill" @click="toggle">
       <span class="pulse" />
       <span class="status-text">{{ statusText }}</span>
-      <Icon :name="expanded ? 'chevron-up' : 'chevron-down'" :size="14" />
+      <NxIcon :icon="expanded ? ChevronUpIcon : ChevronDownIcon" :size="14" />
     </button>
     <div v-if="expanded" class="log-feed">
       <div v-for="(log, i) in logs" :key="i" class="log-line">
@@ -16,7 +16,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Icon } from 'lucide-vue-next';
+import NxIcon from './NxIcon.vue';
+import { ChevronUp as ChevronUpIcon, ChevronDown as ChevronDownIcon } from 'lucide-vue-next';
 
 const props = defineProps({
   taskId: {

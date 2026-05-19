@@ -1,10 +1,5 @@
 <template>
-  <nav
-    class="nx-nav-rail"
-    :class="{ collapsed }"
-    :style="{ width: collapsed ? '80px' : '240px' }"
-  >
-    <!-- Top Section: Hub Icons -->
+  <nav class="nx-nav-rail" :class="{ collapsed }" :style="{ width: collapsed ? '80px' : '240px' }">
     <div class="nav-section top-section">
       <div class="nav-items">
         <button
@@ -21,9 +16,8 @@
       </div>
     </div>
 
-    <!-- Bottom Section: User & Settings -->
     <div class="nav-section bottom-section">
-      <button class="nav-item" title="Settings">
+      <button class="nav-item" title="Settings" @click="navigateToHub('settings')">
         <Settings class="nav-icon" />
         <span class="nav-label">Settings</span>
       </button>
@@ -40,24 +34,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import {
-  MessageSquare,
-  Bot,
-  Brain,
-  Users,
-  Workflow,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-vue-next';
+import { MessageSquare, Bot, Brain, Users, Workflow, Settings, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
-
-// State
 const collapsed = ref(false);
 
-// Hub definitions
 const hubs = [
   { id: 'nexus', label: 'Nexus', icon: MessageSquare },
   { id: 'agents', label: 'Agents', icon: Bot },
@@ -67,7 +49,6 @@ const hubs = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-// Computed
 const activeHub = computed(() => {
   const path = route.path;
   if (path.includes('/agents')) return 'agents';
@@ -78,17 +59,16 @@ const activeHub = computed(() => {
   return 'nexus';
 });
 
-// Methods
 const toggleCollapsed = () => {
   collapsed.value = !collapsed.value;
   localStorage.setItem('nexus-nav-rail-collapsed', String(collapsed.value));
 };
 
 const navigateToHub = (hubId) => {
-  router.push({ name: hubId });
+  const routeName = hubId === 'nexus' ? 'nexus' : hubId;
+  router.push({ name: routeName });
 };
 
-// Lifecycle
 onMounted(() => {
   const saved = localStorage.getItem('nexus-nav-rail-collapsed');
   if (saved !== null) {
@@ -101,10 +81,10 @@ onMounted(() => {
 .nx-nav-rail {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 72px);
   background: rgba(22, 27, 34, 0.7);
   backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.1);
   transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   overflow: hidden;
@@ -136,7 +116,7 @@ onMounted(() => {
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 150ms ease;
-  text-align: left;
+  text-align: start;
 }
 
 .nav-item:hover {
@@ -147,7 +127,7 @@ onMounted(() => {
 .nav-item.active {
   background: rgba(0, 122, 255, 0.05);
   color: #007AFF;
-  border-left: 3px solid #007AFF;
+  border-inline-start: 3px solid #007AFF;
 }
 
 .nav-icon {
@@ -171,22 +151,11 @@ onMounted(() => {
 }
 
 .bottom-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-block-start: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 12px;
 }
 
 .collapse-toggle {
   margin-top: 4px;
-}
-
-/* RTL Support */
-[dir='rtl'] .nx-nav-rail {
-  border-right: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-[dir='rtl'] .nav-item.active {
-  border-left: none;
-  border-right: 3px solid #007AFF;
 }
 </style>

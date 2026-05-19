@@ -4,39 +4,44 @@
     <p class="subtitle">Platform overview and key metrics.</p>
 
     <div class="kpi-grid">
-      <div class="kpi-card">
+      <NxGlassCard class="kpi-card">
         <span class="kpi-label">Total Contacts</span>
         <span class="kpi-value">{{ stats.contacts ?? 0 }}</span>
-      </div>
-      <div class="kpi-card">
+      </NxGlassCard>
+      <NxGlassCard class="kpi-card">
         <span class="kpi-label">Active Agents</span>
         <span class="kpi-value">{{ stats.agents ?? 0 }}</span>
-      </div>
-      <div class="kpi-card">
+      </NxGlassCard>
+      <NxGlassCard class="kpi-card">
         <span class="kpi-label">Running Workflows</span>
         <span class="kpi-value">{{ stats.workflows ?? 0 }}</span>
-      </div>
-      <div class="kpi-card">
+      </NxGlassCard>
+      <NxGlassCard class="kpi-card">
         <span class="kpi-label">Tasks Today</span>
         <span class="kpi-value">{{ stats.tasks ?? 0 }}</span>
-      </div>
+      </NxGlassCard>
     </div>
 
     <div class="dashboard-grid">
-      <div class="panel">
+      <NxGlassCard class="panel">
         <h2>Recent Activity</h2>
         <p class="placeholder-text">Activity feed coming soon.</p>
-      </div>
-      <div class="panel">
+      </NxGlassCard>
+      <NxGlassCard class="panel">
         <h2>System Health</h2>
         <p class="placeholder-text">Health metrics coming soon.</p>
-      </div>
+      </NxGlassCard>
+      <NxUsageAnalytics class="panel" />
+      <NxAiSummary class="panel" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import NxGlassCard from '../Components/NxGlassCard.vue'
+import NxUsageAnalytics from '../Components/NxUsageAnalytics.vue'
+import NxAiSummary from '../Components/NxAiSummary.vue'
 
 const stats = ref({
   contacts: 0,
@@ -97,7 +102,7 @@ onMounted(() => {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
   gap: 1rem;
 }
 

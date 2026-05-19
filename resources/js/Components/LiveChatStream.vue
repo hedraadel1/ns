@@ -1,11 +1,19 @@
 <template>
-  <div class="live-chat-stream" aria-hidden="true" />
+  <div class="live-chat-stream" role="status" aria-live="polite" v-if="visible">
+    <div class="stream-header">
+      <span class="stream-label">Live response stream</span>
+      <span class="stream-state" v-if="isStreaming">Receiving tokens…</span>
+      <span class="stream-state" v-else>Idle</span>
+    </div>
+    <pre class="stream-output">{{ streamingContent || 'Waiting for incoming tokens...' }}</pre>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted, watch, computed } from 'vue';
 import { useEcho } from '../composables/useEcho';
 import { useEchoStore } from '../stores/useEchoStore';
+import { useLiveChat } from '../composables/useLiveChat';
 
 const props = defineProps({
   conversationId: {
@@ -17,8 +25,11 @@ const props = defineProps({
 const emit = defineEmits(['token-streamed', 'message-completed', 'message-sent', 'connected', 'error']);
 
 const echoStore = useEchoStore();
+const liveChat = useLiveChat();
 const { isAvailable, subscribePrivate, leaveChannel, withPollingFallback } = useEcho();
 let channel = null;
+
+const visible = computed(() => liveChat.isStreaming || liveChat.streamingContent.length > 0);
 
 function leaveChannelWithEcho() {
   if (channel) {
@@ -30,6 +41,7 @@ function leaveChannelWithEcho() {
   leaveChannel(`conversation.${props.conversationId}`);
   channel = null;
   echoStore.reset();
+  liveChat.clearStream();
 }
 
 function subscribe() {
@@ -47,12 +59,18 @@ function subscribe() {
     () => subscribePrivate(
       channelName,
       {
-        '.App\\Events\\TokenStreamed': (event) => emit('token-streamed', event),
-        '.App\\Events\\MessageCompleted': (event) => emit('message-completed', event),
+        '.App\\Events\\TokenStreamed': (event) => {
+          liveChat.appendToken(event.token ?? '');
+          emit('token-streamed', event);
+        },
+        '.App\\Events\\MessageCompleted': (event) => {
+          liveChat.completeStream(event.final_message ?? liveChat.streamingContent);
+          emit('message-completed', event);
+        },
         '.App\\Events\\MessageSent': (event) => emit('message-sent', event),
       },
       () => {
-        echoStore.setConnected();
+        echoStore.setConnectionStatus('connected');
         emit('connected');
       }
     ),
@@ -63,7 +81,7 @@ function subscribe() {
   );
 
   if (!channel) {
-    echoStore.setConnected();
+    echoStore.setConnectionStatus('connected');
     emit('connected');
   }
 }
@@ -73,7 +91,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  leaveChannel();
+  leaveChannelWithEcho();
 });
 
 watch(
@@ -86,6 +104,37 @@ watch(
 
 <style scoped>
 .live-chat-stream {
-  display: none;
+  width: 100%;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stream-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.stream-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.stream-state {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.stream-output {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  min-height: 5rem;
 }
 </style>

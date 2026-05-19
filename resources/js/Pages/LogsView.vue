@@ -20,6 +20,13 @@
               <span class="text-base">↻</span>
               Refresh
             </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-2 text-sm text-slate-300 transition hover:border-emerald-500/40 hover:text-emerald-200"
+              @click="showLogViewer = true"
+            >
+              Open log viewer
+            </button>
             <label class="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-2 text-sm text-slate-300">
               <input v-model="autoRefresh" type="checkbox" class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-emerald-500" />
               Auto refresh
@@ -283,12 +290,14 @@
         </aside>
       </section>
     </div>
-  </div>
+  <NxLogViewerModal :open="showLogViewer" @close="showLogViewer = false" />
+</div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import LogStream from '../Components/LogStream.vue'
+import NxLogViewerModal from '../Components/NxLogViewerModal.vue'
 
 const logs = ref([])
 const stats = ref({})
@@ -303,6 +312,7 @@ const selectedCategory = ref('')
 const perPage = ref(25)
 const page = ref(1)
 const autoRefresh = ref(false)
+const showLogViewer = ref(false)
 const lastSyncedAt = ref(null)
 let autoRefreshTimer = null
 

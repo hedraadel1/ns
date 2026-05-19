@@ -1,9 +1,8 @@
 <template>
-  <aside class="hub-sidebar" :class="{ collapsed }">
-    <!-- Sticky Search Header -->
+  <aside class="hub-sidebar">
     <div class="sidebar-header">
       <div class="search-container">
-        <Icon :name="SearchIcon" :size="16" class="search-icon" />
+        <SearchIcon class="search-icon" />
         <input
           v-model="searchQuery"
           type="text"
@@ -19,12 +18,11 @@
           <option value="created">Created</option>
         </select>
         <button class="filter-btn" @click="showFilters = !showFilters" title="Filters">
-          <Icon :name="FilterIcon" :size="14" />
+          <FilterIcon class="filter-icon" />
         </button>
       </div>
     </div>
 
-    <!-- Entity List -->
     <div class="entity-list">
       <div
         v-for="entity in filteredEntities"
@@ -34,7 +32,7 @@
         @click="selectEntity(entity)"
       >
         <div class="entity-icon">
-          <Icon :name="entity.icon" :size="16" />
+          <component :is="entity.icon" class="entity-icon" />
         </div>
         <div class="entity-info">
           <div class="entity-name">{{ entity.name }}</div>
@@ -45,12 +43,11 @@
         </div>
       </div>
 
-      <!-- Empty State -->
       <div v-if="filteredEntities.length === 0" class="empty-state">
-        <Icon :name="SearchXIcon" :size="32" class="empty-icon" />
+        <SearchXIcon class="empty-icon" />
         <p>No items found</p>
         <button class="create-btn" @click="onCreate">
-          <Icon :name="PlusIcon" :size="14" />
+          <PlusIcon class="create-icon" />
           Create New
         </button>
       </div>
@@ -59,9 +56,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Icon } from 'lucide-vue-next';
 import {
   Search as SearchIcon,
   Filter as FilterIcon,
@@ -89,7 +85,6 @@ const sortBy = ref('name');
 const showFilters = ref(false);
 const selectedEntity = ref(null);
 
-// Hub entity definitions
 const hubEntities = computed(() => {
   const hub = route.meta?.hub || 'nexus';
   const entities = {
@@ -124,23 +119,22 @@ const hubEntities = computed(() => {
 
 const filteredEntities = computed(() => {
   let result = [...hubEntities.value];
-  
-  // Filter by search
+
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
-    result = result.filter(e => 
+    result = result.filter((e) =>
       e.name.toLowerCase().includes(q) ||
-      e.subtitle?.toLowerCase().includes(q)
+      e.subtitle?.toLowerCase().includes(q) ||
+      String(e.status || '').toLowerCase().includes(q)
     );
   }
-  
-  // Sort
+
   if (sortBy.value === 'name') {
     result.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortBy.value === 'updated') {
     result.sort((a, b) => (b.subtitle || '').localeCompare(a.subtitle || ''));
   }
-  
+
   return result;
 });
 
@@ -150,24 +144,26 @@ function selectEntity(entity) {
 }
 
 function onSearch() {
-  // Debounced search could be added here
+  // Explicit search filtering handled by computed.
 }
 
 function onSort() {
-  // Sorting handled by computed
+  // Sorting handled by computed.
 }
 
 function onCreate() {
   emit('create');
 }
 
-// Watch route changes to update selected entity
-watch(() => route.path, () => {
-  const entityId = route.params.id || route.query.entity;
-  if (entityId) {
-    selectedEntity.value = hubEntities.value.find(e => e.id === entityId) || null;
+watch(
+  () => route.path,
+  () => {
+    const entityId = route.params.id || route.query.entity;
+    if (entityId) {
+      selectedEntity.value = hubEntities.value.find((e) => e.id === entityId) || null;
+    }
   }
-});
+);
 </script>
 
 <style scoped>
@@ -179,7 +175,7 @@ watch(() => route.path, () => {
   flex-direction: column;
   background: rgba(22, 27, 34, 0.7);
   backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
@@ -188,7 +184,7 @@ watch(() => route.path, () => {
   top: 0;
   z-index: 10;
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-block-end: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(22, 27, 34, 0.9);
 }
 
@@ -200,7 +196,7 @@ watch(() => route.path, () => {
 
 .search-icon {
   position: absolute;
-  left: 10px;
+  inset-inline-start: 10px;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -279,7 +275,7 @@ watch(() => route.path, () => {
 
 .entity-item.active {
   background: rgba(0, 122, 255, 0.15);
-  border-left: 2px solid #007AFF;
+  border-inline-start: 2px solid #007AFF;
 }
 
 .entity-icon {
@@ -370,7 +366,7 @@ watch(() => route.path, () => {
 }
 
 .create-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;

@@ -1,71 +1,165 @@
 <template>
-  <div class="app-layout">
-    <!-- Skip to content link for accessibility -->
+  <div class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
+    <NxTopBar @open-search="openCommandBar" />
 
-    <!-- Navigation Rail (Left Pane) -->
-    <NxNavRail v-if="!isMobile" />
+    <div class="app-layout">
+      <NxNavRail v-if="!isMobile" />
+      <HubSidebar v-if="!isMobile" />
 
-    <!-- Hub Sidebar (Middle Pane) -->
-    <HubSidebar v-if="!isMobile" />
+      <main id="main-content" class="workspace" :class="{ 'full-width': isMobile }">
+        <header class="workspace-header">
+          <div class="header-left">
+            <Breadcrumbs />
+          </div>
+          <div class="header-right">
+            <NxTokenMeter :current-tokens="tokenUsage" :max-tokens="tokenBudget" />
+          </div>
+        </header>
 
-    <!-- Main Workspace (Right Pane) -->
-    <main
-      id="main-content"
-      class="workspace"
-      :class="{ 'full-width': isMobile }"
-    >
-      <!-- Workspace Header -->
-      <header class="workspace-header">
-        <div class="header-left">
-          <Breadcrumbs />
+        <NxStatusBar v-if="!isMobile" />
+
+        <div
+          class="workspace-content"
+          :style="workspaceContentStyle"
+          @touchstart.passive="onWorkspaceTouchStart"
+          @touchmove.passive="onWorkspaceTouchMove"
+          @touchend.passive="onWorkspaceTouchEnd"
+        >
+          <router-view v-slot="{ Component }">
+            <transition name="page-slide" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
-        <div class="header-right">
-          <NxTokenMeter />
-        </div>
-      </header>
+      </main>
+    </div>
 
-      <!-- Status Bar -->
-      <NxStatusBar v-if="!isMobile" />
-
-      <!-- Router View with Transition -->
-      <div class="workspace-content">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </div>
-    </main>
-
-    <!-- Mobile Footer (Bottom Tab Bar) -->
-    <MobileFooter v-if="isMobile" />
-
-    <!-- Command Bar (Cmd+K) -->
-    <NxCommandBar ref="commandBarRef" />
+    <MobileFooter v-if="isMobile" @open-search="openCommandBar" @toggle-voice="toggleVoiceMode" />
+    <NxFab :secondary-actions="fabActions" @select="handleFabSelect" />
+    <NxCommandBar ref="commandBar" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import NxNavRail from './Components/NxNavRail.vue';
 import HubSidebar from './Components/HubSidebar.vue';
-import MobileFooter from './Components/MobileFooter.vue';
-import NxCommandBar from './Components/NxCommandBar.vue';
 import NxStatusBar from './Components/NxStatusBar.vue';
-import Breadcrumbs from './Components/Breadcrumbs.vue';
 import NxTokenMeter from './Components/NxTokenMeter.vue';
+import MobileFooter from './Components/MobileFooter.vue';
+import Breadcrumbs from './Components/Breadcrumbs.vue';
+import NxTopBar from './Components/NxTopBar.vue';
+import NxCommandBar from './Components/NxCommandBar.vue';
+import NxFab from './Components/NxFab.vue';
+import { useSystem } from './stores/useSystem';
 
-const route = useRoute();
-const commandBarRef = ref(null);
-
-// Mobile detection
+const commandBar = ref(null);
 const isMobile = ref(false);
+const system = useSystem();
+const router = useRouter();
+const route = useRoute();
 
-function checkMobile() {
+const tokenUsage = ref(system.tokenUsed);
+const tokenBudget = ref(system.tokenBudget);
+const swipeDistance = ref(0);
+const swipeStart = ref({ x: 0, y: 0, time: 0 });
+const swipeActive = ref(false);
+const swipeThreshold = 120;
+
+const fabActions = computed(() => {
+  switch (route.name) {
+    case 'contacts':
+      return [
+        { value: 'refresh', label: 'Refresh Contacts', icon: '↻' },
+        { value: 'new-contact', label: 'New Contact', icon: '+' },
+        { value: 'more', label: 'More actions', icon: '⋯' },
+      ]
+    case 'memory':
+      return [
+        { value: 'refresh', label: 'Refresh Memory', icon: '↻' },
+        { value: 'browse', label: 'Browse all', icon: '📂' },
+        { value: 'filters', label: 'Filters', icon: '⚙️' },
+      ]
+    case 'workflows':
+      return [
+        { value: 'refresh', label: 'Refresh tasks', icon: '↻' },
+        { value: 'retry', label: 'Retry tasks', icon: '⟳' },
+        { value: 'help', label: 'Task help', icon: '❔' },
+      ]
+    default:
+      return [
+        { value: 'search', label: 'Open search', icon: '🔎' },
+        { value: 'home', label: 'Go home', icon: '🏠' },
+      ]
+  }
+})
+
+const workspaceContentStyle = computed(() => ({
+  transform: swipeDistance.value ? `translateX(${swipeDistance.value}px)` : undefined,
+}))
+
+const checkMobile = () => {
   isMobile.value = window.innerWidth < 768;
-}
+};
+
+const openCommandBar = () => {
+  commandBar.value?.open();
+};
+
+const toggleVoiceMode = () => {
+  openCommandBar();
+};
+
+const canNavigateBack = () => {
+  return route.name !== 'nexus' && window.history.length > 1;
+};
+
+const onWorkspaceTouchStart = (event) => {
+  if (!isMobile.value) return;
+  const touch = event.touches[0];
+  if (touch.clientX > 50 || !canNavigateBack()) return;
+
+  swipeStart.value = {
+    x: touch.clientX,
+    y: touch.clientY,
+    time: Date.now(),
+  };
+  swipeActive.value = true;
+};
+
+const onWorkspaceTouchMove = (event) => {
+  if (!swipeActive.value) return;
+  const touch = event.touches[0];
+  const deltaX = touch.clientX - swipeStart.value.x;
+  const deltaY = touch.clientY - swipeStart.value.y;
+  if (deltaX <= 0 || Math.abs(deltaY) > 40) {
+    swipeDistance.value = 0;
+    return;
+  }
+
+  swipeDistance.value = Math.min(deltaX, 260);
+};
+
+const onWorkspaceTouchEnd = () => {
+  if (!swipeActive.value) return;
+  swipeActive.value = false;
+  if (swipeDistance.value >= swipeThreshold) {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(15)
+    }
+    router.back()
+  }
+  swipeDistance.value = 0;
+};
+
+const handleFabSelect = (action) => {
+  const event = new CustomEvent('nx-fab-action', {
+    detail: action,
+  })
+  window.dispatchEvent(event)
+};
 
 onMounted(() => {
   checkMobile();
@@ -78,11 +172,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #0a0a0a;
+}
+
 .app-layout {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  background: rgba(22, 27, 34, 0.7);
 }
 
 .workspace {
@@ -90,7 +191,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-width: 0;
 }
 
 .workspace.full-width {
@@ -98,54 +198,57 @@ onUnmounted(() => {
 }
 
 .workspace-header {
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(22, 27, 34, 0.9);
-  min-height: 56px;
-}
-
-.header-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.header-right {
+  padding: 0 16px;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(22, 27, 34, 0.7);
+  backdrop-filter: blur(12px);
   flex-shrink: 0;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
 }
 
 .workspace-content {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-/* Skip link for accessibility */
 .skip-link {
   position: absolute;
   top: -40px;
-  left: 0;
+  inset-inline-start: 6px;
   background: #007AFF;
   color: white;
-  padding: 8px 16px;
-  z-index: 9999;
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 1000;
   transition: top 150ms ease;
 }
 
 .skip-link:focus {
-  top: 0;
+  top: 6px;
 }
 
-/* Fade transition */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 150ms ease;
+.page-slide-enter-active,
+.page-slide-leave-active {
+  transition: transform 200ms ease, opacity 200ms ease;
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.page-slide-enter-from {
+  transform: translateX(16px);
+  opacity: 0;
+}
+
+.page-slide-leave-to {
+  transform: translateX(-16px);
   opacity: 0;
 }
 </style>

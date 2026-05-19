@@ -12,6 +12,7 @@
   - Fix `Toast.vue` to use Pinia store instead of `window.$toast` hack
   - Fix `WorkflowBuilder.vue` mobile breakpoints and touch targets
   - Fix `DashboardView.vue` grid overflow (`minmax(400px,1fr)` → `minmax(min(400px,100%),1fr)`)
+  - Progress: 7/10 UP-005 tasks completed (`ChatInterface.vue`, `AgentsView.vue`, `MemoryView.vue`, `WorkflowBuilder.vue`, `TaskMonitor.vue`, `SettingsView.vue`, `DashboardView.vue`)
 
 - **Project Context & Versions:**
   - Vue 3 Composition API

@@ -110,6 +110,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
     Route::get('/tasks/routing-stats', [\App\Http\Controllers\TaskController::class, 'getRoutingStats'])
        ->name('tasks.routing-stats');
 
+    Route::get('/stats/usage', [\App\Http\Controllers\StatsController::class, 'usage'])
+       ->name('stats.usage');
+
+    Route::get('/stats/dashboard', [\App\Http\Controllers\StatsController::class, 'dashboard'])
+       ->name('stats.dashboard');
+
     /**
      * Memory Hub Routes
      */
@@ -164,10 +170,14 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
     // New AI Models Hub endpoints for UP-002
     Route::post('/ai/providers', [\App\Http\Controllers\AiProviderController::class, 'store'])
         ->name('ai.providers.store');
+    Route::post('/ai/providers/{id}/test', [\App\Http\Controllers\AiProviderController::class, 'test'])
+        ->name('ai.providers.test');
     Route::post('/ai/providers/{id}/sync-models', [\App\Http\Controllers\AiProviderController::class, 'syncModels'])
         ->name('ai.providers.sync-models');
+    Route::get('/ai/intents/routing', [\App\Http\Controllers\AiRequestController::class, 'getRoutingMatrix'])
+        ->name('ai.intents.routing.index');
     Route::put('/ai/intents/routing', [\App\Http\Controllers\AiRequestController::class, 'routeIntent'])
-        ->name('ai.intents.routing');
+        ->name('ai.intents.routing.update');
     Route::post('/ai/request', [\App\Http\Controllers\AiRequestController::class, 'handleRequest'])
         ->name('ai.request.handle');
 

@@ -23,24 +23,19 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-  Home,
-  Brain,
-  Users,
-  ListTodo,
-  Search,
-  Mic,
-} from 'lucide-vue-next';
+import { Home, Brain, Users, ListTodo, Search, Mic } from 'lucide-vue-next';
 
+const emit = defineEmits(['open-search', 'toggle-voice']);
 const route = useRoute();
 const router = useRouter();
 
 const isMobile = ref(false);
+
 const activeTab = computed(() => {
   const path = route.path;
   if (path.includes('/memory')) return 'memory';
   if (path.includes('/contacts')) return 'contacts';
-  if (path.includes('/tasks') || path.includes('/workflows')) return 'tasks';
+  if (path.includes('/workflows') || path.includes('/tasks')) return 'tasks';
   if (path.includes('/search')) return 'search';
   return 'dashboard';
 });
@@ -54,14 +49,19 @@ const tabs = [
 ];
 
 const onTabClick = (tabId) => {
+  if (tabId === 'search') {
+    emit('open-search');
+    return;
+  }
+
+  const routeName = tabId === 'dashboard' ? 'nexus' : tabId === 'tasks' ? 'workflows' : tabId;
   if (activeTab.value !== tabId) {
-    router.push({ name: tabId });
+    router.push({ name: routeName });
   }
 };
 
 const toggleVoiceMode = () => {
-  // Voice dictation mode toggle
-  console.log('Voice mode toggled');
+  emit('toggle-voice');
 };
 
 const checkMobile = () => {
@@ -84,13 +84,13 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   position: fixed;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   bottom: 0;
-  left: 0;
-  right: 0;
   height: 64px;
   background: rgba(22, 27, 34, 0.85);
   backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-block-start: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: env(safe-area-inset-bottom, 0);
   z-index: 50;
 }

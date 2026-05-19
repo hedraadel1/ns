@@ -46,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\Routing\MessageRouterService($app['cache']);
         });
 
+        $this->app->singleton(
+            \Illuminate\Contracts\Console\Kernel::class,
+            \App\Console\Kernel::class,
+        );
+
         // Bind Interface implementations
         $this->app->bind(
             \App\Contracts\MemoryEngineContract::class,

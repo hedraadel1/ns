@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import axios from 'axios';
 
 export const useContacts = defineStore('contacts', {
   state: () => ({
@@ -13,7 +14,7 @@ export const useContacts = defineStore('contacts', {
     filteredContacts: (state) => {
       if (!state.searchQuery) return state.contacts;
       const q = state.searchQuery.toLowerCase();
-      return state.contacts.filter(c => 
+      return state.contacts.filter(c =>
         c.canonical_name?.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q)
       );
@@ -25,14 +26,23 @@ export const useContacts = defineStore('contacts', {
       this.loading = true;
       try {
         const { data } = await axios.get('/api/v1/contacts');
-        this.contacts = data;
+        if (Array.isArray(data)) {
+          this.contacts = data;
+        } else if (Array.isArray(data?.data)) {
+          this.contacts = data.data;
+        } else if (Array.isArray(data?.contacts)) {
+          this.contacts = data.contacts;
+        } else {
+          this.contacts = [];
+        }
       } finally {
         this.loading = false;
       }
     },
 
     selectContact(id) {
-      this.selected = this.contacts.find(c => c.id === id) || null;
+      const selectedId = typeof id === 'object' ? id.id : id;
+      this.selected = this.contacts.find(c => c.id === selectedId) || null;
     },
 
     async addContact(data) {

@@ -15,14 +15,14 @@
           <button
             @click="saveWorkflow"
             :disabled="!currentWorkflow || savingWorkflow"
-            class="rounded-lg bg-green-500/20 px-4 py-2 text-sm font-semibold text-green-300 transition hover:bg-green-500/30 disabled:opacity-50"
+            class="min-h-[44px] rounded-lg bg-green-500/20 px-4 py-2 text-sm font-semibold text-green-300 transition hover:bg-green-500/30 disabled:opacity-50"
           >
             {{ savingWorkflow ? 'Saving...' : 'Save' }}
           </button>
           <button
             @click="publishWorkflow"
             :disabled="!currentWorkflow || publishingWorkflow"
-            class="rounded-lg bg-blue-500/20 px-4 py-2 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/30 disabled:opacity-50"
+            class="min-h-[44px] rounded-lg bg-blue-500/20 px-4 py-2 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/30 disabled:opacity-50"
           >
             {{ publishingWorkflow ? 'Publishing...' : 'Publish' }}
           </button>
@@ -31,14 +31,14 @@
     </section>
 
     <!-- Main Content Grid -->
-    <div class="flex min-h-0 flex-1 gap-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
       <!-- Left Panel: Workflow List -->
-      <div class="w-64 flex-shrink-0 overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-950/50 flex flex-col">
+      <div class="w-full max-w-[320px] flex-shrink-0 overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-950/50 flex flex-col">
         <div class="border-b border-zinc-700/50 px-4 py-3">
           <h2 class="text-sm font-semibold text-white">Workflows</h2>
           <button
             @click="createNewWorkflow"
-            class="mt-2 w-full rounded-lg border border-zinc-700/50 bg-zinc-900/50 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900/70"
+            class="mt-2 w-full min-h-[44px] rounded-lg border border-zinc-700/50 bg-zinc-900/50 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900/70"
           >
             + New Workflow
           </button>
@@ -80,21 +80,21 @@
             <div class="flex items-center gap-2">
               <button
                 @click="zoomIn"
-                class="rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                class="min-h-[44px] min-w-[44px] rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
                 title="Zoom In"
               >
                 +
               </button>
               <button
                 @click="zoomOut"
-                class="rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                class="min-h-[44px] min-w-[44px] rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
                 title="Zoom Out"
               >
                 -
               </button>
               <button
                 @click="resetZoom"
-                class="rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
+                class="min-h-[44px] min-w-[44px] rounded-lg border border-zinc-700/50 bg-zinc-900 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-800"
                 title="Reset Zoom"
               >
                 Reset
@@ -113,7 +113,16 @@
         </div>
 
         <!-- Canvas Area -->
-        <div class="flex-1 overflow-auto relative bg-gradient-to-br from-zinc-950 to-zinc-900/80">
+        <div class="workflow-canvas flex-1 overflow-auto relative bg-gradient-to-br from-zinc-950 to-zinc-900/80">
+          <div v-if="workflowsStore.isExecuting" class="progress-overlay absolute inset-x-6 top-6 z-20 rounded-2xl border border-emerald-500/20 bg-slate-950/90 p-4 text-sm text-white shadow-xl shadow-black/40">
+            <div class="flex items-center justify-between gap-3">
+              <p>Workflow running — {{ Math.round(workflowsStore.executionProgress) }}% complete</p>
+              <span class="text-xs text-slate-400">Live update</span>
+            </div>
+            <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+              <div class="h-full rounded-full bg-emerald-400 transition-all duration-300" :style="{ width: `${workflowsStore.executionProgress}%` }"></div>
+            </div>
+          </div>
           <svg
             v-if="currentWorkflow"
             class="absolute inset-0 w-full h-full"
@@ -127,6 +136,7 @@
               :y1="connection.fromY"
               :x2="connection.toX"
               :y2="connection.toY"
+              :class="['flow-line', connection.active ? 'flow-line-active' : '']"
               stroke="#10b981"
               stroke-width="2"
               fill="none"
@@ -140,18 +150,24 @@
           >
             <div
               v-for="(step, index) in currentWorkflow.steps"
-              :key=step.id"
-              class="absolute cursor-move rounded-lg border-2 bg-zinc-900/80 p-4 transition hover:border-green-500/50"
+              :key="step.id"
+              class="absolute cursor-move rounded-lg border-2 p-4 transition duration-300"
               :style="{ left: `${step.x || index * 200}px`, top: `${step.y || index * 100}px` }"
-              :class="{ 'border-green-500 border-green-500/50': selectedStep?.id === step.id, 'border-zinc-700/50': selectedStep?.id !== step.id }"
-              @click="selectStep(step)"
+              :class="[stepStatusClass(step), selectedStep?.id === step.id ? 'shadow-[0_0_0_0.5rem_rgba(16,185,129,0.15)]' : '']"
+              @pointerdown.prevent.stop="startDrag(step, $event)"
+              @click.stop="selectStep(step)"
             >
-              <p class="text-xs font-semibold text-white">{{ step.name }}</p>
-              <p class="mt-1 text-xs text-zinc-400">{{ step.type }}</p>
-              <div class="mt-3 flex gap-1">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs font-semibold text-white">{{ step.name }}</p>
+                <span class="rounded-full bg-slate-950/80 px-2 py-1 text-[10px] uppercase tracking-[0.24em] text-slate-400">
+                  {{ stepStatusLabel(step) }}
+                </span>
+              </div>
+              <p class="mt-2 text-xs text-zinc-400">{{ step.type }}</p>
+              <div class="mt-3 flex gap-2">
                 <button
                   @click.stop="deleteStep(step.id)"
-                  class="rounded-md border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-300 transition hover:bg-red-500/20"
+                  class="min-h-[44px] min-w-[44px] rounded-md border border-red-500/20 bg-red-500/10 px-2 py-2 text-xs text-red-300 transition hover:bg-red-500/20"
                 >
                   Delete
                 </button>
@@ -170,7 +186,7 @@
       </div>
 
       <!-- Right Panel: Step Configuration -->
-      <div class="w-80 flex-shrink-0 overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-950/50 flex flex-col">
+      <div class="w-full max-w-[360px] flex-shrink-0 overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-950/50 flex flex-col">
         <!-- Step Types Toolbar -->
         <div class="border-b border-zinc-700/50 bg-zinc-900/50 px-4 py-3">
           <p class="text-xs font-semibold text-zinc-400">Add Step</p>
@@ -239,7 +255,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useWorkflows } from '../stores/useWorkflows'
 
 // State
 const workflows = ref([])
@@ -248,6 +265,10 @@ const selectedStep = ref(null)
 const agents = ref([])
 const zoom = ref(1)
 const stepTypes = ['Start', 'Action', 'Decision', 'End', 'Webhook', 'Wait']
+const draggingStep = ref(null)
+const dragOffset = ref({ x: 0, y: 0 })
+const workflowsStore = useWorkflows()
+const stepGridSize = 24
 
 // Loading states
 const loadingWorkflows = ref(false)
@@ -267,6 +288,9 @@ const getConnections = computed(() => {
       fromY: (step.y || idx * 100) + 50,
       toX: (nextStep.x || (idx + 1) * 200) + 100,
       toY: (nextStep.y || (idx + 1) * 100) + 50,
+      active:
+        ['running', 'completed'].includes(String(step.status).toLowerCase()) ||
+        ['running', 'completed'].includes(String(nextStep.status).toLowerCase()),
     }
   })
 })
@@ -306,6 +330,9 @@ async function loadAgents() {
 function selectWorkflow(workflow) {
   currentWorkflow.value = workflow
   selectedStep.value = null
+  workflowsStore.current = workflow
+  workflowsStore.selectedStep = null
+  workflowsStore.executionProgress = 0
 }
 
 // Create new workflow
@@ -336,6 +363,7 @@ function addStep(stepType) {
     config: '{}',
     x: Math.random() * 500,
     y: Math.random() * 300,
+    status: 'pending',
   }
 
   if (!currentWorkflow.value.steps) {
@@ -370,6 +398,70 @@ function zoomOut() {
 
 function resetZoom() {
   zoom.value = 1
+}
+
+function stepStatusClass(step) {
+  const status = String(step?.status ?? 'pending').toLowerCase()
+  switch (status) {
+    case 'running':
+      return 'border-blue-400/80 bg-blue-500/10 text-blue-200 shadow-[0_0_0_0.25rem_rgba(59,130,246,0.15)]'
+    case 'completed':
+      return 'border-emerald-400/80 bg-emerald-500/10 text-emerald-200'
+    case 'failed':
+      return 'border-rose-400/80 bg-rose-500/10 text-rose-200 animate-failed-shake'
+    default:
+      return 'border-slate-700/70 bg-slate-900/90 text-slate-200'
+  }
+}
+
+function stepStatusLabel(step) {
+  const status = String(step?.status ?? 'pending').toLowerCase()
+  return status === 'pending' ? 'Pending' : status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function startDrag(step, event) {
+  draggingStep.value = step
+  dragOffset.value = {
+    x: event.clientX - (step.x || 0),
+    y: event.clientY - (step.y || 0),
+  }
+  window.addEventListener('pointermove', moveDrag)
+  window.addEventListener('pointerup', endDrag)
+}
+
+function moveDrag(event) {
+  if (!draggingStep.value) return
+  draggingStep.value.x = Math.max(0, event.clientX - dragOffset.value.x)
+  draggingStep.value.y = Math.max(0, event.clientY - dragOffset.value.y)
+}
+
+function endDrag() {
+  if (!draggingStep.value) return
+  draggingStep.value.x = Math.round((draggingStep.value.x || 0) / stepGridSize) * stepGridSize
+  draggingStep.value.y = Math.round((draggingStep.value.y || 0) / stepGridSize) * stepGridSize
+  draggingStep.value = null
+  window.removeEventListener('pointermove', moveDrag)
+  window.removeEventListener('pointerup', endDrag)
+}
+
+function handleWorkflowStepCompleted(event) {
+  const stepId = event.stepId ?? event.id
+  const status = event.status ?? 'completed'
+  workflowsStore.updateStepStatus(stepId, status)
+  const step = currentWorkflow.value?.steps?.find((s) => s.id === stepId)
+  if (step) {
+    step.status = status
+  }
+  if (typeof event.progress === 'number') {
+    workflowsStore.executionProgress = event.progress
+  }
+}
+
+function setupWorkflowEchoListeners() {
+  if (typeof window === 'undefined' || !window.Echo) return
+
+  const channel = window.Echo.private('workflows')
+  channel.listen('WorkflowStepCompleted', handleWorkflowStepCompleted)
 }
 
 // Save workflow
@@ -448,5 +540,52 @@ function getStatusClass(status) {
 onMounted(() => {
   loadWorkflows()
   loadAgents()
+  setupWorkflowEchoListeners()
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined' && window.Echo) {
+    window.Echo.leaveChannel('workflows')
+  }
 })
 </script>
+
+<style scoped>
+.workflow-canvas {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.flow-line {
+  stroke-dasharray: 8 4;
+  opacity: 0.55;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+.flow-line-active {
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.45));
+}
+@keyframes flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.flow-line {
+  animation: flow 1s linear infinite;
+}
+@keyframes failed-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-2px); }
+  40%, 80% { transform: translateX(2px); }
+}
+.animate-failed-shake {
+  animation: failed-shake 0.6s ease-in-out infinite;
+}
+.progress-overlay {
+  pointer-events: none;
+}
+@media (max-width: 767px) {
+  .workflow-canvas {
+    min-height: 520px;
+  }
+}
+</style>

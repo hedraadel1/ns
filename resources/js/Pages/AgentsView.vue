@@ -5,7 +5,7 @@
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80">Agents hub</p>
           <h1 class="mt-1 text-2xl font-semibold text-white">Agent roster and availability</h1>
-          <p class="mt-1 text-sm text-slate-400">Live data from /api/v1/agents.</p>
+          <p class="mt-1 text-sm text-slate-400">Live data from /api/v1/agents with real-time status updates.</p>
         </div>
 
         <button
@@ -74,9 +74,12 @@
           @click="selectedAgent = agent"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 class="text-lg font-semibold text-white">{{ agent.name }}</h2>
-              <p class="mt-1 text-sm text-slate-400">{{ agent.role }}</p>
+            <div class="flex items-center gap-3">
+              <NxAiPulse :state="pulseState(agent.status)" size="26" />
+              <div>
+                <h2 class="text-lg font-semibold text-white">{{ agent.name }}</h2>
+                <p class="mt-1 text-sm text-slate-400">{{ agent.role }}</p>
+              </div>
             </div>
 
             <span
@@ -216,7 +219,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import NxAiPulse from '../Components/NxAiPulse.vue'
 
 const loading = ref(false)
 const error = ref('')
@@ -224,6 +228,7 @@ const query = ref('')
 const statusFilter = ref('all')
 const agents = ref([])
 const selectedAgent = ref(null)
+let agentChannel = null
 
 const asDate = (value) => {
   if (!value) return '—'
@@ -246,6 +251,14 @@ function normalizeCapabilities(agent) {
 
 function resolveStatus(agent) {
   return String(agent?.status ?? agent?.state ?? agent?.availability ?? 'offline')
+}
+
+function pulseState(status) {
+  const normalized = status.toLowerCase()
+  if (['busy', 'working', 'running', 'thinking'].includes(normalized)) return 'thinking'
+  if (['online', 'available'].includes(normalized)) return 'idle'
+  if (['error', 'offline', 'unknown'].includes(normalized)) return 'error'
+  return 'idle'
 }
 
 function normalizeAgent(agent, index) {
@@ -337,5 +350,38 @@ async function loadAgents() {
   }
 }
 
-onMounted(loadAgents)
+function handleAgentExecuted(event) {
+  const id = event.agentId ?? event.id
+  const index = agents.value.findIndex((agent) => agent.key === id)
+  if (index < 0) return
+
+  const updatedAgent = {
+    ...agents.value[index],
+    status: event.status ?? agents.value[index].status,
+    badgeClass: normalizeAgent(agents.value[index]).badgeClass,
+  }
+
+  agents.value.splice(index, 1, updatedAgent)
+  if (selectedAgent.value?.key === id) {
+    selectedAgent.value = updatedAgent
+  }
+}
+
+function setupEventListeners() {
+  if (typeof window === 'undefined' || !window.Echo) return
+
+  agentChannel = window.Echo.private('agents')
+  agentChannel.listen('AgentExecuted', handleAgentExecuted)
+}
+
+onMounted(() => {
+  loadAgents()
+  setupEventListeners()
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined' && window.Echo) {
+    window.Echo.leave('agents')
+  }
+})
 </script>

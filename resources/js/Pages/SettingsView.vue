@@ -19,6 +19,22 @@
       <button class="add-btn" @click="showAddModal = true">+ Add Setting</button>
     </div>
 
+    <section class="intent-panel mt-8">
+      <div class="intent-panel-header">
+        <h2>Intent routing matrix</h2>
+        <p class="text-sm text-slate-400">Configure which providers handle which intents and cost profiles.</p>
+      </div>
+      <NxIntentGrid :rows="intentRows" :profiles="intentProfiles" />
+    </section>
+
+    <section class="provider-panel mt-8">
+      <div class="provider-panel-header">
+        <h2>Add provider</h2>
+        <p class="text-sm text-slate-400">Connect a new AI provider with a guided wizard.</p>
+      </div>
+      <NxAddProviderForm @saved="loadSettings" />
+    </section>
+
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>Loading settings...</p>
@@ -128,7 +144,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useNotificationStore } from '../stores/useNotificationStore'
+import NxIntentGrid from '../Components/NxIntentGrid.vue'
+import NxAddProviderForm from '../Components/NxAddProviderForm.vue'
 
+const notifications = useNotificationStore()
 const settings = ref([])
 const groups = ref([])
 const selectedGroup = ref('')
@@ -136,6 +156,12 @@ const searchQuery = ref('')
 const loading = ref(false)
 const error = ref(null)
 const showAddModal = ref(false)
+const intentRows = ref([
+  { intent: 'Search', provider: 'Auto', fallback: 'Quality' },
+  { intent: 'Summarize', provider: 'Quality', fallback: 'Budget' },
+  { intent: 'Chat', provider: 'Fast', fallback: 'Quality' },
+])
+const intentProfiles = ref(['Fast', 'Quality', 'Budget'])
 
 const newSetting = ref({
   key: '',
@@ -163,49 +189,55 @@ async function loadSettings() {
       groups.value = uniqueGroups.sort()
     } else {
       error.value = data.message || 'Failed to load settings'
+      notifications.addToast({ type: 'error', title: 'Settings load failed', message: error.value })
     }
   } catch (e) {
     error.value = 'Network error'
+    notifications.addToast({ type: 'error', title: 'Network error', message: 'Unable to load settings.' })
   } finally {
     loading.value = false
   }
 }
 
 async function updateSetting(setting, event) {
+  const originalValue = setting.value
   let value
+
   if (setting.type === 'boolean') {
     value = event.target.checked
   } else if (setting.type === 'json') {
     try {
       value = JSON.parse(event.target.value)
     } catch {
-      alert('Invalid JSON format')
+      notifications.addToast({ type: 'error', title: 'Invalid JSON', message: 'Invalid JSON format.' })
       return
     }
   } else {
     value = event.target.value
   }
 
+  setting.value = value
+
   try {
     const res = await fetch(`/api/v1/settings/${setting.key}`, {
       method: 'PUT',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify({ value }),
     })
     const data = await res.json()
     if (data.success) {
-      setting.value = data.data.value
-      if (window.$toast) {
-        window.$toast.success(`Successfully updated ${setting.key}`)
-      }
+      setting.value = data.data?.value ?? value
+      notifications.addToast({ type: 'success', title: 'Updated', message: `Successfully updated ${setting.key}.` })
     } else {
-      alert(data.message || 'Update failed')
+      setting.value = originalValue
+      notifications.addToast({ type: 'error', title: 'Update failed', message: data.message || 'Unable to update setting.' })
     }
   } catch (e) {
-    alert('Network error')
+    setting.value = originalValue
+    notifications.addToast({ type: 'error', title: 'Network error', message: 'Unable to update setting.' })
   }
 }
 
@@ -213,7 +245,7 @@ async function addSetting() {
   try {
     const res = await fetch('/api/v1/settings', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
       },
@@ -231,14 +263,12 @@ async function addSetting() {
         is_public: false,
       }
       loadSettings()
-      if (window.$toast) {
-        window.$toast.success('Successfully added setting')
-      }
+      notifications.addToast({ type: 'success', title: 'Added', message: 'Successfully added setting.' })
     } else {
-      alert(data.message || 'Failed to add setting')
+      notifications.addToast({ type: 'error', title: 'Add failed', message: data.message || 'Failed to add setting.' })
     }
   } catch (e) {
-    alert('Network error')
+    notifications.addToast({ type: 'error', title: 'Network error', message: 'Unable to add setting.' })
   }
 }
 

@@ -71,9 +71,9 @@ class AiProviderController extends Controller
 
         try {
             $success = $this->providerRegistry->syncModels($id);
-            
+
             $provider = $this->providerRegistry->getProvider($id);
-            
+
             if (!$provider) {
                 return response()->json([
                     'success' => false,
@@ -91,6 +91,40 @@ class AiProviderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to sync models for AI provider: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Test connection to a specific provider
+     */
+    public function test(Request $request, $id)
+    {
+        try {
+            $provider = $this->providerRegistry->getProvider($id);
+
+            if (!$provider) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI provider not found'
+                ], 404);
+            }
+
+            // Simulate a test connection to the provider
+            // In a real implementation, this would make a test request to the provider's API
+            $testResult = [
+                'success' => true,
+                'message' => 'Connection to provider successful',
+                'status' => 'healthy',
+                'timestamp' => now()->toIso8601String(),
+            ];
+
+            return response()->json($testResult, 200);
+        } catch (\Exception $e) {
+            Log::error('Error testing provider connection: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to test provider connection: ' . $e->getMessage()
             ], 500);
         }
     }

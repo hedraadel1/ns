@@ -9,7 +9,7 @@
       </slot>
     </div>
     <div class="card-body">
-      <slot></slot>
+      <slot />
     </div>
     <div v-if="$slots.footer" class="card-footer">
       <slot name="footer"></slot>

@@ -2,7 +2,7 @@
   <div v-if="visible" class="command-bar-overlay" @click.self="close">
     <div class="command-bar" role="dialog" aria-label="Command Bar">
       <div class="command-input-wrapper">
-        <Icon :name="SearchIcon" :size="18" class="command-icon" />
+        <SearchIcon class="command-icon" />
         <input
           ref="inputRef"
           v-model="query"
@@ -19,7 +19,6 @@
       </div>
 
       <div class="command-results">
-        <!-- Recent searches (shown when query is empty) -->
         <div v-if="!query && recentSearches.length > 0" class="result-group">
           <div class="group-label">Recent</div>
           <div
@@ -29,12 +28,11 @@
             :class="{ selected: selectedIndex === index }"
             @click="selectResult(item)"
           >
-            <Icon :name="ClockIcon" :size="14" class="result-icon" />
+            <ClockIcon class="result-icon" />
             <span class="result-text">{{ item }}</span>
           </div>
         </div>
 
-        <!-- Search results -->
         <div v-if="results.length > 0" class="result-group">
           <div class="group-label">{{ query ? 'Results' : 'Suggestions' }}</div>
           <div
@@ -44,7 +42,7 @@
             :class="{ selected: selectedIndex === (query ? index : recentSearches.length + index) }"
             @click="selectResult(item)"
           >
-            <Icon :name="item.icon" :size="14" class="result-icon" />
+            <component :is="item.icon" class="result-icon" />
             <div class="result-content">
               <span class="result-text">{{ item.title }}</span>
               <span v-if="item.subtitle" class="result-subtitle">{{ item.subtitle }}</span>
@@ -53,15 +51,9 @@
           </div>
         </div>
 
-        <!-- Empty state -->
-        <div v-if="query && results.length === 0 && !loading" class="empty-state">
-          <Icon :name="SearchXIcon" :size="24" class="empty-icon" />
+        <div v-if="query && results.length === 0" class="empty-state">
+          <SearchXIcon class="empty-icon" />
           <p>No results found for "{{ query }}"</p>
-        </div>
-
-        <!-- Loading state -->
-        <div v-if="loading" class="loading-state">
-          <NxLiveLoader :taskId="null" :status="'loading'" />
         </div>
       </div>
 
@@ -77,10 +69,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { Icon } from 'lucide-vue-next';
-import NxLiveLoader from './NxLiveLoader.vue';
 import {
   Search as SearchIcon,
   Clock as ClockIcon,
@@ -93,37 +83,32 @@ import {
   MessageSquare as MessageSquareIcon,
   Settings as SettingsIcon,
   Home as HomeIcon,
+  FileText as LogsIcon,
+  Server as AIModelsIcon,
 } from 'lucide-vue-next';
 
 const router = useRouter();
-
 const visible = ref(false);
 const query = ref('');
 const results = ref([]);
 const recentSearches = ref([]);
 const selectedIndex = ref(0);
-const loading = ref(false);
 const inputRef = ref(null);
 
-let searchTimeout = null;
-
-// Load recent searches from localStorage
-onMounted(() => {
-  const stored = localStorage.getItem('nexus-recent-searches');
-  if (stored) {
-    recentSearches.value = JSON.parse(stored);
-  }
-  
-  document.addEventListener('keydown', onKeyDown);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', onKeyDown);
-  if (searchTimeout) clearTimeout(searchTimeout);
-});
+const routeItems = [
+  { id: 'nexus', title: 'Nexus', subtitle: 'Home hub', icon: MessageSquareIcon, route: { name: 'nexus' }, type: 'Hub' },
+  { id: 'agents', title: 'Agents', subtitle: 'Agent management', icon: BotIcon, route: { name: 'agents' }, type: 'Hub' },
+  { id: 'memory', title: 'Memory', subtitle: 'Memory assistant', icon: BrainIcon, route: { name: 'memory' }, type: 'Hub' },
+  { id: 'contacts', title: 'Contacts', subtitle: 'Contact book', icon: UserIcon, route: { name: 'contacts' }, type: 'Hub' },
+  { id: 'workflows', title: 'Workflows', subtitle: 'Workflow builder', icon: WorkflowIcon, route: { name: 'workflows' }, type: 'Hub' },
+  { id: 'settings', title: 'Settings', subtitle: 'System preferences', icon: SettingsIcon, route: { name: 'settings' }, type: 'Hub' },
+  { id: 'dashboard', title: 'Dashboard', subtitle: 'Overview metrics', icon: HomeIcon, route: { name: 'dashboard' }, type: 'Hub' },
+  { id: 'logs', title: 'Logs', subtitle: 'System logs', icon: LogsIcon, route: { name: 'logs' }, type: 'Hub' },
+  { id: 'ai-models', title: 'AI Models', subtitle: 'Model registry', icon: AIModelsIcon, route: { name: 'ai-models' }, type: 'Hub' },
+];
 
 function onKeyDown(e) {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
     toggle();
   }
@@ -147,32 +132,23 @@ function close() {
 
 function onInput() {
   selectedIndex.value = 0;
-  
-  if (searchTimeout) clearTimeout(searchTimeout);
-  
   if (!query.value) {
     results.value = [];
     return;
   }
-  
-  loading.value = true;
-  searchTimeout = setTimeout(async () => {
-    try {
-      const { data } = await axios.get('/api/v1/search', {
-        params: { q: query.value },
-      });
-      results.value = data.results || [];
-    } catch (error) {
-      console.error('Search failed:', error);
-      results.value = [];
-    } finally {
-      loading.value = false;
-    }
-  }, 300);
+
+  const search = query.value.toLowerCase().trim();
+  results.value = routeItems
+    .filter((item) =>
+      item.title.toLowerCase().includes(search) ||
+      item.subtitle.toLowerCase().includes(search) ||
+      item.type.toLowerCase().includes(search)
+    )
+    .slice(0, 8);
 }
 
 function onArrowDown() {
-  const maxIndex = query.value ? results.value.length - 1 : recentSearches.value.length + results.value.length - 1;
+  const maxIndex = results.value.length - 1;
   selectedIndex.value = Math.min(selectedIndex.value + 1, maxIndex);
 }
 
@@ -181,43 +157,41 @@ function onArrowUp() {
 }
 
 function onEnter() {
-  const items = query.value ? results.value : recentSearches.value;
-  if (items[selectedIndex.value]) {
-    selectResult(items[selectedIndex.value]);
-  }
+  if (!results.value.length) return;
+  selectResult(results.value[selectedIndex.value]);
 }
 
 function selectResult(item) {
-  // Add to recent searches
-  if (typeof item === 'string') {
-    addToRecent(item);
-    // Navigate based on search query
-    if (item.startsWith('/')) {
-      router.push(item);
-    } else {
-      router.push({ name: 'search', query: { q: item } });
-    }
-  } else if (item.route) {
-    addToRecent(item.title);
+  if (!item) return;
+
+  addToRecent(item.title);
+  if (item.route) {
     router.push(item.route);
-  } else if (item.path) {
-    addToRecent(item.title);
-    router.push(item.path);
   }
-  
   close();
 }
 
-function addToRecent(search) {
-  recentSearches.value = [
-    search,
-    ...recentSearches.value.filter(s => s !== search),
-  ].slice(0, 5);
-  
+function addToRecent(label) {
+  recentSearches.value = [label, ...recentSearches.value.filter((item) => item !== label)].slice(0, 5);
   localStorage.setItem('nexus-recent-searches', JSON.stringify(recentSearches.value));
 }
 
-// Expose for parent components
+onMounted(() => {
+  const stored = localStorage.getItem('nexus-recent-searches');
+  if (stored) {
+    try {
+      recentSearches.value = JSON.parse(stored);
+    } catch {
+      recentSearches.value = [];
+    }
+  }
+  document.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeyDown);
+});
+
 defineExpose({ open: toggle, close });
 </script>
 
@@ -368,12 +342,6 @@ defineExpose({ open: toggle, close });
 .empty-icon {
   margin-bottom: 12px;
   opacity: 0.5;
-}
-
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 24px;
 }
 
 .command-footer {

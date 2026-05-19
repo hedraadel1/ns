@@ -2,13 +2,14 @@
   <nav class="breadcrumbs" aria-label="Breadcrumb">
     <ol class="breadcrumb-list">
       <li v-for="(item, index) in breadcrumbItems" :key="index" class="breadcrumb-item">
-        <span
+        <button
           v-if="index < breadcrumbItems.length - 1"
+          type="button"
           class="breadcrumb-link"
           @click="navigateTo(item)"
         >
           {{ item.label }}
-        </span>
+        </button>
         <span v-else class="breadcrumb-current">
           {{ item.label }}
         </span>
@@ -26,22 +27,12 @@ const route = useRoute();
 const router = useRouter();
 
 const breadcrumbItems = computed(() => {
-  const items = [];
-  const matched = route.matched.filter(r => r.meta?.breadcrumb);
+  const items = route.matched
+    .filter((r) => r.meta?.breadcrumb)
+    .map((r) => ({ label: r.meta.breadcrumb, path: r.path }));
 
-  matched.forEach((r, i) => {
-    items.push({
-      label: r.meta.breadcrumb,
-      path: r.path,
-    });
-  });
-
-  // If no matched routes, use current route
   if (items.length === 0) {
-    items.push({
-      label: route.meta?.breadcrumb || 'Home',
-      path: route.path,
-    });
+    items.push({ label: route.meta?.breadcrumb || 'Home', path: route.path });
   }
 
   return items;
@@ -74,24 +65,32 @@ const navigateTo = (item) => {
   gap: 4px;
 }
 
+.breadcrumb-link,
+.breadcrumb-current {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
 .breadcrumb-link {
   color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: color 150ms ease;
+  text-decoration: none;
+  transition: color 150ms ease, transform 150ms ease;
 }
 
 .breadcrumb-link:hover {
   color: rgba(255, 255, 255, 0.9);
-  text-decoration: underline;
+  transform: translateX(2px);
 }
 
 .breadcrumb-current {
-  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 }
 
 .breadcrumb-separator {
   color: rgba(255, 255, 255, 0.3);
-  margin: 0 2px;
 }
 </style>
