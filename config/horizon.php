@@ -98,6 +98,9 @@ return [
 
     'waits' => [
         'redis:default' => 60,
+        'redis:critical' => 10,
+        'redis:llm-inference' => 120,
+        'redis:batch' => 300,
     ],
 
     /*
@@ -197,33 +200,96 @@ return [
     */
 
     'defaults' => [
-        'supervisor-1' => [
+        'critical-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['critical'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 3,
+            'maxTime' => 60,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 1,
+            'timeout' => 120,
+            'nice' => -5,
+        ],
+        'llm-inference-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['llm-inference'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 2,
+            'maxTime' => 300,
+            'maxJobs' => 0,
+            'memory' => 512,
+            'tries' => 1,
+            'timeout' => 600,
+            'nice' => 0,
+        ],
+        'default-supervisor' => [
             'connection' => 'redis',
             'queue' => ['default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
-            'maxProcesses' => 1,
-            'maxTime' => 0,
+            'maxProcesses' => 2,
+            'maxTime' => 180,
             'maxJobs' => 0,
-            'memory' => 128,
+            'memory' => 256,
             'tries' => 1,
-            'timeout' => 60,
+            'timeout' => 300,
             'nice' => 0,
+        ],
+        'batch-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['batch'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 600,
+            'maxJobs' => 0,
+            'memory' => 512,
+            'tries' => 1,
+            'timeout' => 1800,
+            'nice' => 10,
         ],
     ],
 
     'environments' => [
         'production' => [
-            'supervisor-1' => [
-                'maxProcesses' => 10,
-                'balanceMaxShift' => 1,
+            'critical-supervisor' => [
+                'maxProcesses' => 5,
+                'balanceMaxShift' => 2,
                 'balanceCooldown' => 3,
+            ],
+            'llm-inference-supervisor' => [
+                'maxProcesses' => 4,
+                'balanceMaxShift' => 2,
+                'balanceCooldown' => 5,
+            ],
+            'default-supervisor' => [
+                'maxProcesses' => 4,
+                'balanceMaxShift' => 2,
+                'balanceCooldown' => 3,
+            ],
+            'batch-supervisor' => [
+                'maxProcesses' => 2,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 10,
             ],
         ],
 
         'local' => [
-            'supervisor-1' => [
-                'maxProcesses' => 3,
+            'critical-supervisor' => [
+                'maxProcesses' => 2,
+            ],
+            'llm-inference-supervisor' => [
+                'maxProcesses' => 1,
+            ],
+            'default-supervisor' => [
+                'maxProcesses' => 1,
+            ],
+            'batch-supervisor' => [
+                'maxProcesses' => 1,
             ],
         ],
     ],
