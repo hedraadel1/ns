@@ -145,6 +145,16 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', EnsureFrontendRequestsAr
         ->name('ai-models.fallback-chain');
     Route::get('/ai-models/budget', [\App\Http\Controllers\AiModelController::class, 'budgetStatus'])
         ->name('ai-models.budget');
+    
+    // New AI Models Hub endpoints for UP-002
+    Route::post('/ai/providers', [\App\Http\Controllers\AiProviderController::class, 'store'])
+        ->name('ai.providers.store');
+    Route::post('/ai/providers/{id}/sync-models', [\App\Http\Controllers\AiProviderController::class, 'syncModels'])
+        ->name('ai.providers.sync-models');
+    Route::put('/ai/intents/routing', [\App\Http\Controllers\AiRequestController::class, 'routeIntent'])
+        ->name('ai.intents.routing');
+    Route::post('/ai/request', [\App\Http\Controllers\AiRequestController::class, 'handleRequest'])
+        ->name('ai.request.handle');
 
     /**
      * Settings Hub Routes
