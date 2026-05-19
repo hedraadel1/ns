@@ -53,15 +53,15 @@ class ProcessAiInferenceJob extends BaseJob
      * @param string $conversationId Conversation UUID
      * @param string $messageId Message UUID (the AI response message)
      * @param string $prompt User's prompt/question
-     * @param string $modelId AI Model UUID
-     * @param string $providerId Provider ID (google_gemini, openai, etc.)
+     * @param string|null $modelId AI Model UUID
+     * @param string|null $providerId Provider ID (google_gemini, openai, etc.)
      */
     public function __construct(
         protected string $conversationId,
         protected string $messageId,
         protected string $prompt,
-        protected string $modelId,
-        protected string $providerId,
+        protected ?string $modelId,
+        protected ?string $providerId,
     ) {
         $this->idempotencyKey = "llm_inference:{$conversationId}:{$messageId}";
     }
