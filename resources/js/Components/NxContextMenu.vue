@@ -6,8 +6,7 @@
         :key="item.value || item.label"
         type="button"
         class="context-menu-item"
-        @click="selectItem(item)
-        "
+        @click="selectItem(item)"
       >
         <span>{{ item.label }}</span>
       </button>
@@ -16,7 +15,8 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { useHaptic } from '../composables/useHaptic';
 
 const props = defineProps({
   visible: {
@@ -38,14 +38,25 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select', 'close'])
+const { light } = useHaptic();
 
-const menuStyle = computed(() => ({
-  left: `${props.x}px`,
-  top: `${props.y}px`,
-}))
+const menuStyle = computed(() => {
+  const safeX = Math.max(12, Math.min(props.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 220))
+  const safeY = Math.max(12, Math.min(props.y, (typeof window !== 'undefined' ? window.innerHeight : 800) - 96))
+  return {
+    left: `${safeX}px`,
+    top: `${safeY}px`,
+  }
+})
 
 function closeMenu() {
   emit('close')
+}
+
+function handleKeyDown(event) {
+  if (event.key === 'Escape') {
+    closeMenu()
+  }
 }
 
 function selectItem(item) {
@@ -56,11 +67,23 @@ function selectItem(item) {
 watch(
   () => props.visible,
   (value) => {
-    if (value && 'vibrate' in navigator) {
-      navigator.vibrate(15)
+    if (value) {
+      light()
     }
+    if (typeof window === 'undefined') return
+    if (value) {
+      window.addEventListener('keydown', handleKeyDown)
+      return
+    }
+    window.removeEventListener('keydown', handleKeyDown)
   }
 )
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('keydown', handleKeyDown)
+  }
+})
 </script>
 
 <style scoped>

@@ -5,7 +5,7 @@
         <div class="card-face card-front">
           <div class="card-front-content">
             <div class="avatar-ring" :class="{ 'ring-active': isActiveToday }">
-              <img :src="avatarUrl" alt="avatar" class="avatar-image" />
+              <img :src="avatarUrl" alt="avatar" class="avatar-image" loading="lazy" />
               <span class="presence-dot" :class="statusClass"></span>
             </div>
             <div class="contact-summary">

@@ -13,6 +13,7 @@ export const useSystem = defineStore('system', {
         rateLimitInfo: null,
         pageLoading: false,
         pageLoadingProgress: 0,
+        theme: typeof window !== 'undefined' ? window.localStorage.getItem('nexus-theme') || 'dark' : 'dark',
     }),
     actions: {
         setConnectionState(state) { this.connectionState = state; },
@@ -28,5 +29,12 @@ export const useSystem = defineStore('system', {
         setPageLoadingProgress(progress) { this.pageLoadingProgress = Math.min(progress, 100); },
         startPageLoading() { this.pageLoading = true; this.pageLoadingProgress = 0; },
         completePageLoading() { this.pageLoading = false; this.pageLoadingProgress = 100; },
+        setTheme(theme) {
+            this.theme = theme;
+            if (typeof window !== 'undefined' && window.document?.documentElement) {
+                window.document.documentElement.dataset.theme = theme;
+                window.localStorage.setItem('nexus-theme', theme);
+            }
+        },
     },
 });

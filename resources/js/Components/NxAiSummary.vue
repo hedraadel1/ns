@@ -10,8 +10,7 @@
 
     <div v-if="expanded" class="summary-body">
       <div v-if="loading" class="loading-state">
-        <p>Generating summary...</p>
-        <div class="loader"></div>
+        <LoadingSpinner message="Generating summary..." />
       </div>
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
@@ -27,6 +26,7 @@
 <script setup>
 import { ref, watch, onBeforeUnmount } from 'vue'
 import NxGlassCard from './NxGlassCard.vue'
+import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps({
   hub: {
@@ -220,20 +220,6 @@ onBeforeUnmount(() => {
   color: #94a3b8;
 }
 
-.loader {
-  width: 24px;
-  height: 24px;
-  border: 2px solid rgba(56, 189, 248, 0.2);
-  border-top-color: #38bdf8;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .error-state {
   display: flex;

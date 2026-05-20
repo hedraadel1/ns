@@ -4,6 +4,7 @@
     <p class="subtitle">Manage application configuration.</p>
 
     <div class="settings-controls">
+      <NxThemeSwitcher />
       <div class="filter-bar">
         <select v-model="selectedGroup" @change="loadSettings" class="group-select">
           <option value="">All Groups</option>
@@ -18,13 +19,21 @@
       </div>
       <button class="add-btn" @click="showAddModal = true">+ Add Setting</button>
     </div>
+    <NxJobRail :active="loading" />
 
     <section class="intent-panel mt-8">
       <div class="intent-panel-header">
         <h2>Intent routing matrix</h2>
         <p class="text-sm text-slate-400">Configure which providers handle which intents and cost profiles.</p>
       </div>
-      <NxIntentGrid :rows="intentRows" :profiles="intentProfiles" />
+      <Suspense>
+        <template #default>
+          <NxIntentGrid :rows="intentRows" :profiles="intentProfiles" />
+        </template>
+        <template #fallback>
+          <div class="panel flex items-center justify-center rounded-2xl border border-white/10 bg-slate-950/70 p-5 text-slate-400">Loading intent matrix…</div>
+        </template>
+      </Suspense>
     </section>
 
     <section class="provider-panel mt-8">
@@ -32,12 +41,19 @@
         <h2>Add provider</h2>
         <p class="text-sm text-slate-400">Connect a new AI provider with a guided wizard.</p>
       </div>
-      <NxAddProviderForm @saved="loadSettings" />
+      <Suspense>
+        <template #default>
+          <NxAddProviderForm @saved="loadSettings" />
+        </template>
+        <template #fallback>
+          <div class="panel flex items-center justify-center rounded-2xl border border-white/10 bg-slate-950/70 p-5 text-slate-400">Loading provider setup…</div>
+        </template>
+      </Suspense>
     </section>
 
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading settings...</p>
+    <div v-if="loading" class="loading-state space-y-4">
+      <LoadingSpinner message="Loading settings..." />
+      <SkeletonLoader variant="list" :rows="5" />
     </div>
 
     <div v-else-if="error" class="error-message">{{ error }}</div>
@@ -143,10 +159,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineAsyncComponent, computed } from 'vue'
 import { useNotificationStore } from '../stores/useNotificationStore'
-import NxIntentGrid from '../Components/NxIntentGrid.vue'
-import NxAddProviderForm from '../Components/NxAddProviderForm.vue'
+import NxThemeSwitcher from '../Components/NxThemeSwitcher.vue'
+import NxJobRail from '../Components/NxJobRail.vue'
+import LoadingSpinner from '../Components/LoadingSpinner.vue'
+import SkeletonLoader from '../Components/SkeletonLoader.vue'
+const NxIntentGrid = defineAsyncComponent(() => import('../Components/NxIntentGrid.vue'))
+const NxAddProviderForm = defineAsyncComponent(() => import('../Components/NxAddProviderForm.vue'))
 
 const notifications = useNotificationStore()
 const settings = ref([])
@@ -231,6 +251,8 @@ async function updateSetting(setting, event) {
     if (data.success) {
       setting.value = data.data?.value ?? value
       notifications.addToast({ type: 'success', title: 'Updated', message: `Successfully updated ${setting.key}.` })
+      notifications.announce(`${setting.key} updated.`)
+      window.dispatchEvent(new CustomEvent('nx-celebration', { detail: { intensity: 0.35 } }))
     } else {
       setting.value = originalValue
       notifications.addToast({ type: 'error', title: 'Update failed', message: data.message || 'Unable to update setting.' })
@@ -264,6 +286,8 @@ async function addSetting() {
       }
       loadSettings()
       notifications.addToast({ type: 'success', title: 'Added', message: 'Successfully added setting.' })
+      notifications.announce('Setting added successfully.')
+      window.dispatchEvent(new CustomEvent('nx-celebration', { detail: { intensity: 0.5 } }))
     } else {
       notifications.addToast({ type: 'error', title: 'Add failed', message: data.message || 'Failed to add setting.' })
     }
@@ -604,21 +628,6 @@ onMounted(() => {
   text-align: center;
   padding: 3rem;
   color: var(--color-text-muted);
-}
-
-.spinner {
-  border: 3px solid rgba(255, 255, 255, 0.05);
-  border-top: 3px solid var(--color-primary);
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .error-message {

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 // Lazy load views
 const NexusView = () => import('../Pages/NexusView.vue');
@@ -11,67 +12,81 @@ const DashboardView = () => import('../Pages/DashboardView.vue');
 const ConversationsView = () => import('../Pages/ConversationsView.vue');
 const LogsView = () => import('../Pages/LogsView.vue');
 const AIModelsView = () => import('../Pages/AIModelsView.vue');
+const LoginPage = () => import('../Pages/Auth/LoginPage.vue');
+const RegisterPage = () => import('../Pages/Auth/RegisterPage.vue');
 
 const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginPage,
+    meta: { requiresAuth: false, breadcrumb: 'Login' },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterPage,
+    meta: { requiresAuth: false, breadcrumb: 'Register' },
+  },
   {
     path: '/',
     name: 'nexus',
     component: NexusView,
-    meta: { breadcrumb: 'Nexus' },
+    meta: { requiresAuth: true, breadcrumb: 'Nexus' },
   },
   {
     path: '/agents',
     name: 'agents',
     component: AgentsView,
-    meta: { breadcrumb: 'Agents' },
+    meta: { requiresAuth: true, breadcrumb: 'Agents' },
   },
   {
     path: '/memory',
     name: 'memory',
     component: MemoryView,
-    meta: { breadcrumb: 'Memory' },
+    meta: { requiresAuth: true, breadcrumb: 'Memory' },
   },
   {
     path: '/contacts',
     name: 'contacts',
     component: ContactsView,
-    meta: { breadcrumb: 'Contacts' },
+    meta: { requiresAuth: true, breadcrumb: 'Contacts' },
   },
   {
     path: '/workflows',
     name: 'workflows',
     component: WorkflowsView,
-    meta: { breadcrumb: 'Workflows' },
+    meta: { requiresAuth: true, breadcrumb: 'Workflows' },
   },
   {
     path: '/settings',
     name: 'settings',
     component: SettingsView,
-    meta: { breadcrumb: 'Settings' },
+    meta: { requiresAuth: true, breadcrumb: 'Settings' },
   },
   {
     path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
-    meta: { breadcrumb: 'Dashboard' },
+    meta: { requiresAuth: true, breadcrumb: 'Dashboard' },
   },
   {
     path: '/conversations',
     name: 'conversations',
     component: ConversationsView,
-    meta: { breadcrumb: 'Conversations' },
+    meta: { requiresAuth: true, breadcrumb: 'Conversations' },
   },
   {
     path: '/logs',
     name: 'logs',
     component: LogsView,
-    meta: { breadcrumb: 'Logs' },
+    meta: { requiresAuth: true, breadcrumb: 'Logs' },
   },
   {
     path: '/ai-models',
     name: 'ai-models',
     component: AIModelsView,
-    meta: { breadcrumb: 'AI Models' },
+    meta: { requiresAuth: true, breadcrumb: 'AI Models' },
   },
 ];
 
@@ -81,6 +96,22 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0 };
   },
+});
+
+// Navigation guard to check authentication
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore();
+  const requiresAuth = to.meta.requiresAuth !== false;
+
+  if (requiresAuth && !authStore.isAuthenticated) {
+    // Redirect to login if auth is required and user is not authenticated
+    next('/login');
+  } else if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
+    // Redirect authenticated users away from login/register pages
+    next('/');
+  } else {
+    next();
+  }
 });
 
 export default router;

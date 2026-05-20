@@ -135,7 +135,7 @@
                     </button>
                   </div>
                 </div>
-              <div v-if="multiSelectMode.value" class="mt-4 rounded-2xl border border-emerald-500/20 bg-slate-950/80 p-3 text-sm text-emerald-200">
+                <div v-if="multiSelectMode.value" class="mt-4 rounded-2xl border border-emerald-500/20 bg-slate-950/80 p-3 text-sm text-emerald-200">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <p><span class="text-white font-semibold">{{ selectedCount }}</span> selected</p>
                   <div class="flex flex-wrap gap-2">
@@ -157,119 +157,118 @@
                 </div>
                 <p class="mt-2 text-xs text-slate-400">Use long-press to enter multi-select mode and choose multiple memories.</p>
               </div>
-            </div>
-
-            <div v-if="loading && !memories.length" class="space-y-3 p-8">
-              <div v-for="n in 5" :key="n" class="animate-pulse rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                <div class="mb-2 h-4 w-1/3 bg-slate-800"></div>
-                <div class="mb-3 h-3 w-full bg-slate-800"></div>
-                <div class="h-3 w-2/3 bg-slate-800"></div>
+              <div v-if="loading && !memories.length" class="space-y-3 p-8">
+                <div v-for="n in 5" :key="n" class="animate-pulse rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div class="mb-2 h-4 w-1/3 bg-slate-800"></div>
+                  <div class="mb-3 h-3 w-full bg-slate-800"></div>
+                  <div class="h-3 w-2/3 bg-slate-800"></div>
+                </div>
               </div>
-            </div>
 
-            <div v-else-if="!memories.length" class="p-8">
-              <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-8 text-center">
-                <p class="text-lg font-medium text-slate-200">No memories found</p>
-                <p class="mt-2 text-sm text-slate-400">
-                  Try a different search term or browse the full memory collection.
-                </p>
+              <div v-else-if="!memories.length" class="p-8">
+                <div class="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-8 text-center">
+                  <p class="text-lg font-medium text-slate-200">No memories found</p>
+                  <p class="mt-2 text-sm text-slate-400">
+                    Try a different search term or browse the full memory collection.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div v-else class="divide-y divide-slate-800">
-              <button
-                v-for="memory in filteredMemories"
-                :key="memoryKey(memory)"
-                type="button"
-                class="w-full px-5 py-4 text-left transition duration-300 hover:bg-slate-950/60"
-                :class="[
-                  multiSelectMode.value && selectedMemoryKeys.value.includes(memoryKey(memory)) ? 'bg-emerald-500/10' : '',
-                  !multiSelectMode.value && memoryKey(memory) === selectedMemoryKey ? 'bg-emerald-500/10' : '',
-                ]"
-                :style="{ opacity: memoryOpacity(memory) }"
-                @pointerdown.prevent="beginMemoryPress(memory)"
-                @pointerup.prevent="endMemoryPress(memory)"
-                @pointerleave="cancelMemoryPress"
-                @pointercancel="cancelMemoryPress"
-                @contextmenu.prevent="openMemoryContextMenu(memory, $event)"
-                @keydown.enter.prevent="endMemoryPress(memory)"
-              >
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div class="flex gap-3">
-                    <div v-if="multiSelectMode.value" class="flex items-center">
-                      <label class="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-white/20 bg-slate-950 transition focus-within:ring-2 focus-within:ring-emerald-400/40">
-                        <input
-                          type="checkbox"
-                          class="peer absolute h-full w-full opacity-0"
-                          :checked="selectedMemoryKeys.value.includes(memoryKey(memory))"
-                          @change.stop.prevent="toggleMemorySelection(memory)"
-                        />
-                        <span
-                          class="pointer-events-none h-3.5 w-3.5 rounded-sm border border-white/20 bg-transparent transition peer-checked:bg-emerald-400 peer-checked:border-emerald-400"
-                        />
-                      </label>
-                    </div>
-
-                    <div class="min-w-0 space-y-2">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-300">
-                          {{ memoryType(memory) }}
-                        </span>
-                        <span v-if="memoryScope(memory)" class="rounded-full border border-slate-700 bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
-                          {{ memoryScope(memory) }}
-                        </span>
-                        <span
-                          v-if="memoryConfidence(memory) !== null"
-                          :class="['rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em]', memoryConfidenceClass(memory)]"
-                        >
-                          {{ memoryConfidenceLabel(memory) }}
-                        </span>
+              <div v-else class="divide-y divide-slate-800">
+                <button
+                  v-for="memory in filteredMemories"
+                  :key="memoryKey(memory)"
+                  type="button"
+                  class="w-full px-5 py-4 text-left transition duration-300 hover:bg-slate-950/60"
+                  :class="[
+                    multiSelectMode.value && selectedMemoryKeys.value.includes(memoryKey(memory)) ? 'bg-emerald-500/10' : '',
+                    !multiSelectMode.value && memoryKey(memory) === selectedMemoryKey ? 'bg-emerald-500/10' : '',
+                  ]"
+                  :style="{ opacity: memoryOpacity(memory) }"
+                  @pointerdown.prevent="beginMemoryPress(memory)"
+                  @pointerup.prevent="endMemoryPress(memory)"
+                  @pointerleave="cancelMemoryPress"
+                  @pointercancel="cancelMemoryPress"
+                  @contextmenu.prevent="openMemoryContextMenu(memory, $event)"
+                  @keydown.enter.prevent="endMemoryPress(memory)"
+                >
+                  <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="flex gap-3">
+                      <div v-if="multiSelectMode.value" class="flex items-center">
+                        <label class="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm border border-white/20 bg-slate-950 transition focus-within:ring-2 focus-within:ring-emerald-400/40">
+                          <input
+                            type="checkbox"
+                            class="peer absolute h-full w-full opacity-0"
+                            :checked="selectedMemoryKeys.value.includes(memoryKey(memory))"
+                            @change.stop.prevent="toggleMemorySelection(memory)"
+                          />
+                          <span
+                            class="pointer-events-none h-3.5 w-3.5 rounded-sm border border-white/20 bg-transparent transition peer-checked:bg-emerald-400 peer-checked:border-emerald-400"
+                          />
+                        </label>
                       </div>
 
-                      <p class="truncate text-sm font-medium text-white">
-                        {{ memoryTitle(memory) }}
-                      </p>
-                      <p class="line-clamp-2 text-sm leading-6 text-slate-400">
-                        {{ memorySummary(memory) }}
-                      </p>
-                    </div>
-                  </div>
+                      <div class="min-w-0 space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-300">
+                            {{ memoryType(memory) }}
+                          </span>
+                          <span v-if="memoryScope(memory)" class="rounded-full border border-slate-700 bg-slate-950/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                            {{ memoryScope(memory) }}
+                          </span>
+                          <span
+                            v-if="memoryConfidence(memory) !== null"
+                            :class="['rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.24em]', memoryConfidenceClass(memory)]"
+                          >
+                            {{ memoryConfidenceLabel(memory) }}
+                          </span>
+                        </div>
 
-                  <div class="flex items-center gap-4">
-                    <div class="text-right">
-                      <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Updated</p>
-                      <p class="mt-1 text-sm font-semibold text-slate-200">{{ memoryTimestamp(memory) }}</p>
+                        <p class="truncate text-sm font-medium text-white">
+                          {{ memoryTitle(memory) }}
+                        </p>
+                        <p class="line-clamp-2 text-sm leading-6 text-slate-400">
+                          {{ memorySummary(memory) }}
+                        </p>
+                      </div>
                     </div>
-                    <span class="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-400">
-                      Inspect
-                    </span>
+
+                    <div class="flex items-center gap-4">
+                      <div class="text-right">
+                        <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Updated</p>
+                        <p class="mt-1 text-sm font-semibold text-slate-200">{{ memoryTimestamp(memory) }}</p>
+                      </div>
+                      <span class="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs text-slate-400">
+                        Inspect
+                      </span>
+                    </div>
                   </div>
+                </button>
+              </div>
+
+              <div class="flex flex-col gap-3 border-t border-slate-800 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-400">
+                  {{ pagination.total !== null ? `${pagination.total} total` : 'Total unknown' }}
+                </p>
+
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!pagination.hasPrev || loading"
+                    @click="goToPage(pagination.page - 1)"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!pagination.hasNext || loading"
+                    @click="goToPage(pagination.page + 1)"
+                  >
+                    Next
+                  </button>
                 </div>
-              </button>
-            </div>
-
-            <div class="flex flex-col gap-3 border-t border-slate-800 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-sm text-slate-400">
-                {{ pagination.total !== null ? `${pagination.total} total` : 'Total unknown' }}
-              </p>
-
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="!pagination.hasPrev || loading"
-                  @click="goToPage(pagination.page - 1)"
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-40"
-                  :disabled="!pagination.hasNext || loading"
-                  @click="goToPage(pagination.page + 1)"
-                >
-                  Next
-                </button>
               </div>
             </div>
           </div>
@@ -367,6 +366,7 @@
             </div>
           </div>
         </aside>
+      </div>
       </section>
 
       <div

@@ -66,6 +66,7 @@
           @pointerup.prevent="endTaskPress(task)"
           @pointerleave="cancelTaskPress"
           @pointercancel="cancelTaskPress"
+          @contextmenu.prevent="openTaskContextMenu(task, $event)"
           @keydown.enter.prevent="endTaskPress(task)"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -136,6 +137,16 @@
         No active tasks are currently running.
       </div>
     </div>
+  </NxPullRefresh>
+
+    <NxContextMenu
+      :visible="contextMenuVisible"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :items="taskActions"
+      @select="handleTaskContextMenu"
+      @close="closeTaskContextMenu"
+    />
 
     <p v-if="error" class="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
       {{ error }}
@@ -194,7 +205,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NxActionButton from '../Components/NxActionButton.vue'
+import NxContextMenu from '../Components/NxContextMenu.vue'
 import NxLiveLoader from '../Components/NxLiveLoader.vue'
+import NxPullRefresh from '../Components/NxPullRefresh.vue'
 import NxTaskDetailDrawer from '../Components/NxTaskDetailDrawer.vue'
 
 const props = defineProps({
@@ -219,6 +232,10 @@ const multiSelectMode = ref(false)
 const selectedTaskKeys = ref([])
 const bulkActionLoading = ref(false)
 const bulkActionError = ref('')
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+const contextMenuTarget = ref(null)
 const taskPressTimer = ref(null)
 const taskLongPressSuppressed = ref(false)
 let timer = null
@@ -554,6 +571,67 @@ function startTimer() {
   }, props.refreshMs)
 }
 
+function openTaskContextMenu(task, event) {
+  contextMenuTarget.value = task
+  contextMenuX.value = event.clientX
+  contextMenuY.value = event.clientY
+  contextMenuVisible.value = true
+}
+
+function closeTaskContextMenu() {
+  contextMenuVisible.value = false
+  contextMenuTarget.value = null
+}
+
+function handleTaskContextMenu(action) {
+  const task = contextMenuTarget.value
+  if (!task) {
+    closeTaskContextMenu()
+    return
+  }
+
+  switch (action.value) {
+    case 'retry':
+      retryTask(task)
+      break
+    case 'pause':
+      pauseTask(task)
+      break
+    case 'cancel':
+      cancelTask(task)
+      break
+    case 'detail':
+      selectedTask.value = task
+      drawerOpen.value = true
+      break
+    default:
+      break
+  }
+
+  closeTaskContextMenu()
+}
+
+const taskActions = computed(() => [
+  { value: 'detail', label: 'View details' },
+  { value: 'retry', label: 'Retry task' },
+  { value: 'pause', label: 'Pause task' },
+  { value: 'cancel', label: 'Cancel task' },
+])
+
+const handleFabAction = (event) => {
+  const action = event.detail
+  switch (action.value) {
+    case 'refresh':
+      loadMonitor()
+      break
+    case 'retry':
+      tasks.value.slice(0, 3).forEach(retryTask)
+      break
+    default:
+      break
+  }
+}
+
 watch(
   () => props.autoRefresh,
   () => {
@@ -565,9 +643,11 @@ watch(
 
 onMounted(() => {
   setupTaskEchoListeners()
+  window.addEventListener('nx-fab-action', handleFabAction)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('nx-fab-action', handleFabAction)
   stopTimer()
   if (taskChannel) {
     taskChannel.stopListening('*')

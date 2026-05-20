@@ -10,6 +10,9 @@
     <!-- Navigation Top Bar -->
     <header class="nx-top-bar">
       <div class="top-bar-left">
+        <button class="sidebar-toggle" @click="toggleSidebar" title="Toggle sidebar">
+          <Menu class="action-icon" />
+        </button>
         <span class="brand-label">Nexus</span>
         <span class="top-bar-separator">•</span>
         <span class="top-bar-context">{{ currentBreadcrumb }}</span>
@@ -19,6 +22,10 @@
           <Search class="action-icon" />
           <span>Search</span>
         </button>
+        <button class="top-bar-action" @click="handleLogout" title="Logout">
+          <LogOut class="action-icon" />
+          <span>Logout</span>
+        </button>
       </div>
     </header>
   </div>
@@ -26,13 +33,22 @@
 
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSystem } from '../stores/useSystem';
-import { Search } from 'lucide-vue-next';
+import { useAuthStore } from '../stores/useAuthStore';
+import { Search, Menu, LogOut } from 'lucide-vue-next';
 
 const route = useRoute();
+const router = useRouter();
 const system = useSystem();
-const emit = defineEmits(['open-search']);
+const authStore = useAuthStore();
+const emit = defineEmits(['open-search', 'toggle-sidebar']);
+const props = defineProps({
+  sidebarOpen: {
+    type: Boolean,
+    default: true,
+  },
+});
 
 const currentBreadcrumb = computed(() => route.meta?.breadcrumb || 'Workspace');
 const progress = ref(0);
@@ -83,6 +99,13 @@ watch(
 );
 
 const openCommandBar = () => emit('open-search');
+
+const toggleSidebar = () => emit('toggle-sidebar');
+
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push('/login');
+};
 
 onMounted(() => {
   // Handle route changes
@@ -141,9 +164,11 @@ onBeforeUnmount(() => {
 .top-bar-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
-.top-bar-action {
+.top-bar-action,
+.sidebar-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -154,9 +179,11 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   transition: background 150ms ease;
+  font-size: 13px;
 }
 
-.top-bar-action:hover {
+.top-bar-action:hover,
+.sidebar-toggle:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 

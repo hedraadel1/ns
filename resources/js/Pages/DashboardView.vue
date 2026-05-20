@@ -31,17 +31,31 @@
         <h2>System Health</h2>
         <p class="placeholder-text">Health metrics coming soon.</p>
       </NxGlassCard>
-      <NxUsageAnalytics class="panel" />
-      <NxAiSummary class="panel" />
+      <Suspense>
+        <template #default>
+          <NxUsageAnalytics class="panel" />
+        </template>
+        <template #fallback>
+          <div class="panel flex items-center justify-center p-5 text-slate-400">Loading analytics…</div>
+        </template>
+      </Suspense>
+      <Suspense>
+        <template #default>
+          <NxAiSummary class="panel" />
+        </template>
+        <template #fallback>
+          <div class="panel flex items-center justify-center p-5 text-slate-400">Loading summary…</div>
+        </template>
+      </Suspense>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineAsyncComponent } from 'vue'
 import NxGlassCard from '../Components/NxGlassCard.vue'
-import NxUsageAnalytics from '../Components/NxUsageAnalytics.vue'
-import NxAiSummary from '../Components/NxAiSummary.vue'
+const NxUsageAnalytics = defineAsyncComponent(() => import('../Components/NxUsageAnalytics.vue'))
+const NxAiSummary = defineAsyncComponent(() => import('../Components/NxAiSummary.vue'))
 
 const stats = ref({
   contacts: 0,

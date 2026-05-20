@@ -5,6 +5,8 @@ export const useNotificationStore = defineStore('notifications', {
         toasts: [],
         unreadCount: 0,
         pendingUndo: null,
+        liveMessage: '',
+        livePoliteness: 'polite',
     }),
     actions: {
         addToast(payload) {
@@ -21,5 +23,13 @@ export const useNotificationStore = defineStore('notifications', {
             this.pendingUndo = { ...action, expiresAt: Date.now() + 8000 };
         },
         clearUndo() { this.pendingUndo = null; },
+        announce(message, politeness = 'polite') {
+            this.liveMessage = message;
+            this.livePoliteness = politeness;
+        },
+        clearLiveMessage() {
+            this.liveMessage = '';
+            this.livePoliteness = 'polite';
+        },
     },
 });

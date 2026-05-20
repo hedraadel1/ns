@@ -62,7 +62,7 @@ function handleClick(event) {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -70,11 +70,17 @@ function handleClick(event) {
   border: none;
   background: #007AFF;
   color: white;
+  transform: translateZ(0);
 }
 
 .nx-action-button:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
   transform: scale(0.98);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.nx-action-button:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .nx-action-button:disabled {

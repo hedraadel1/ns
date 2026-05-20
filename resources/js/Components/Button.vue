@@ -78,10 +78,20 @@ function handleClick(e) {
   font-weight: 600;
   border-radius: 0.75rem;
   cursor: pointer;
-  transition: all 180ms ease;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  transform: translateZ(0);
   border: 1px solid transparent;
   white-space: nowrap;
   padding: 0.75rem 1rem;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn:disabled {

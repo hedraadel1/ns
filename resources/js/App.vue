@@ -1,11 +1,11 @@
 <template>
   <div class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    <NxTopBar @open-search="openCommandBar" />
+    <NxTopBar @open-search="openCommandBar" @toggle-sidebar="sidebarOpen = !sidebarOpen" :sidebar-open="sidebarOpen" />
 
     <div class="app-layout">
       <NxNavRail v-if="!isMobile" />
-      <HubSidebar v-if="!isMobile" />
+      <HubSidebar v-if="!isMobile && sidebarOpen" />
 
       <main id="main-content" class="workspace" :class="{ 'full-width': isMobile }">
         <header class="workspace-header">
@@ -36,7 +36,15 @@
     </div>
 
     <MobileFooter v-if="isMobile" @open-search="openCommandBar" @toggle-voice="toggleVoiceMode" />
+    <NxOfflineBanner
+      :online="online"
+      :queued-count="queueCount"
+      :status="status"
+      @replay="replayQueue"
+    />
     <NxFab :secondary-actions="fabActions" @select="handleFabSelect" />
+    <NxLiveRegion />
+    <NxCelebration :trigger="celebrationKey" :intensity="celebrationIntensity" />
     <NxCommandBar ref="commandBar" />
   </div>
 </template>
@@ -53,20 +61,31 @@ import Breadcrumbs from './Components/Breadcrumbs.vue';
 import NxTopBar from './Components/NxTopBar.vue';
 import NxCommandBar from './Components/NxCommandBar.vue';
 import NxFab from './Components/NxFab.vue';
+import NxOfflineBanner from './Components/NxOfflineBanner.vue';
+import NxLiveRegion from './Components/NxLiveRegion.vue';
+import NxCelebration from './Components/NxCelebration.vue';
 import { useSystem } from './stores/useSystem';
+import { useHaptic } from './composables/useHaptic';
+import { useOfflineQueue } from './composables/useOfflineQueue';
 
 const commandBar = ref(null);
 const isMobile = ref(false);
+const sidebarOpen = ref(true);
 const system = useSystem();
 const router = useRouter();
 const route = useRoute();
+const { online, queueCount, status, replayQueue } = useOfflineQueue();
+const { success } = useHaptic();
 
 const tokenUsage = ref(system.tokenUsed);
 const tokenBudget = ref(system.tokenBudget);
+const celebrationKey = ref(0);
+const celebrationIntensity = ref(0.7);
 const swipeDistance = ref(0);
 const swipeStart = ref({ x: 0, y: 0, time: 0 });
 const swipeActive = ref(false);
 const swipeThreshold = 120;
+const swipeVelocityThreshold = 0.35;
 
 const fabActions = computed(() => {
   switch (route.name) {
@@ -102,6 +121,10 @@ const workspaceContentStyle = computed(() => ({
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768;
+};
+
+const applyTheme = () => {
+  system.setTheme(system.theme || 'dark');
 };
 
 const openCommandBar = () => {
@@ -145,29 +168,39 @@ const onWorkspaceTouchMove = (event) => {
 const onWorkspaceTouchEnd = () => {
   if (!swipeActive.value) return;
   swipeActive.value = false;
-  if (swipeDistance.value >= swipeThreshold) {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(15)
-    }
-    router.back()
+  const elapsed = Math.max(Date.now() - swipeStart.value.time, 1);
+  const velocity = swipeDistance.value / elapsed;
+
+  if (swipeDistance.value >= swipeThreshold || velocity >= swipeVelocityThreshold) {
+    success();
+    router.back();
   }
+
   swipeDistance.value = 0;
 };
 
 const handleFabSelect = (action) => {
   const event = new CustomEvent('nx-fab-action', {
     detail: action,
-  })
-  window.dispatchEvent(event)
+  });
+  window.dispatchEvent(event);
+};
+
+const handleCelebrationEvent = (event) => {
+  celebrationKey.value += 1;
+  celebrationIntensity.value = Math.min(1, Math.max(0.25, event?.detail?.intensity ?? 0.7));
 };
 
 onMounted(() => {
+  applyTheme();
   checkMobile();
   window.addEventListener('resize', checkMobile);
+  window.addEventListener('nx-celebration', handleCelebrationEvent);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile);
+  window.removeEventListener('nx-celebration', handleCelebrationEvent);
 });
 </script>
 
@@ -239,16 +272,26 @@ onUnmounted(() => {
 
 .page-slide-enter-active,
 .page-slide-leave-active {
-  transition: transform 200ms ease, opacity 200ms ease;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-slide-enter-from {
-  transform: translateX(16px);
+  transform: translateY(12px);
   opacity: 0;
 }
 
+.page-slide-enter-to {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.page-slide-leave-from {
+  transform: translateY(0);
+  opacity: 1;
+}
+
 .page-slide-leave-to {
-  transform: translateX(-16px);
+  transform: translateY(-8px);
   opacity: 0;
 }
 </style>

@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('usage_logs', function (Blueprint $table) {
             $table->id();
             $table->uuid('provider_id')->nullable();
-            $table->unsignedBigInteger('model_id')->nullable();
+            $table->uuid('model_id')->nullable();
             $table->string('intent_name')->nullable();
             $table->unsignedInteger('input_tokens')->default(0);
             $table->unsignedInteger('output_tokens')->default(0);
