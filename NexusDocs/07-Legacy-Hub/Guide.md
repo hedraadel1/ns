@@ -157,8 +157,8 @@ When working with Nexus legacy documentation, pay special attention to:
 ```
 
 ## Related Documentation
-- [Code Hub Guide](../02-Code-Hub/Guide.md) - For current implementation patterns
-- [Architecture Hub](../01-Architecture-Hub/) - For understanding architectural evolution
+- [Code Hub Guide](../02-Project-Code/Guide.md) - For current implementation patterns
+- [Project Architecture ](../01-Architecture-Hub/) - For understanding architectural evolution
 - [Governance Hub](../05-Governance-Hub/) - For deprecation and cleanup policies
 
 By following these prompts and guidelines, AI agents can effectively maintain the Legacy Hub to preserve historical knowledge while guiding developers toward current best practices for the Nexus platform.

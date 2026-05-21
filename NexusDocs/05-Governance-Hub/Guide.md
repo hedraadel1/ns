@@ -131,7 +131,7 @@ Perform a quarterly review of all Governance Hub documents:
 ### For Cross-Hub Consistency Checks
 ```
 Verify consistency between Governance Hub and other documentation hubs:
-1. Ensure testing standards support architectural principles from Architecture Hub
+1. Ensure testing standards support architectural principles from Project Architecture 
 2. Verify that coding standards are reflected in Code Hub documentation
 3. Check that deployment rules consider workflow complexity from Workflow Hub
 4. Confirm AI context includes governance constraints

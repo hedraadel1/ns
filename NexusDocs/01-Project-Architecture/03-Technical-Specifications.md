@@ -484,4 +484,4 @@ This document provides detailed technical specifications for the Nexus platform,
 - [System Requirements](../01-Architecture-Hub/02-System-Requirements.md)
 - [Data Models](./04-Data-Models.md)
 - [Architecture Details](../Docs/ARCHITECTURE_DETAILS.md) (existing documentation)
-- [API Documentation](../02-Code-Hub/01-Backend/01-Modules/*/*-Controllers.md) (to be created)
+- [API Documentation](../02-Project-Code/01-Backend/01-Hubs/*/*-Controllers.md) (to be created)

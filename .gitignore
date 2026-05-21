@@ -12,11 +12,6 @@
 /.phpunit.cache
 /.phpactor.json
 /auth.json
-.env
-.env.backup
-.env.production
-Homestead.json
-Homestead.yaml
 /public/build
 /public/hot
 /public/storage
@@ -26,5 +21,7 @@ bootstrap/compiled.php
 app/storage/
 public_html/storage
 public_html/hot
-/.kilo/
-/.kilocode/
+/.kilo
+/.kilocode
+/.continue
+/.sixth

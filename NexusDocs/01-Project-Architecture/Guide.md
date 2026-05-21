@@ -1,9 +1,9 @@
-# AI Guide for Architecture Hub Documentation
+# AI Guide for Project Architecture  Documentation
 
-This file contains specific prompts and instructions for AI agents to analyze, generate, update, or maintain documentation within the Architecture Hub.
+This file contains specific prompts and instructions for AI agents to analyze, generate, update, or maintain documentation within the Project Architecture .
 
 ## Purpose
-The Architecture Hub contains high-level system overviews, requirements, technical specifications, and data models. These prompts help AI agents understand how to work with architectural documentation effectively.
+The Project Architecture  contains high-level system overviews, requirements, technical specifications, and data models. These prompts help AI agents understand how to work with architectural documentation effectively.
 
 ## Analysis Prompts
 
@@ -27,7 +27,7 @@ Review the requirements document and:
 1. Categorize each requirement as functional, non-functional, or constraint
 2. Identify which requirements are fully implemented, partially implemented, or not implemented
 3. Trace each requirement to specific code components or configuration where possible
-4. Identify gaps between documented requirements and actual implementation
+4. Identify  gaps between documented requirements and actual implementation
 5. Suggest clarifications or additions based on current system behavior
 6. Note any requirements that may be outdated or no longer relevant
 7. Recommend priority updates based on current development focus areas
@@ -92,7 +92,7 @@ Update the following architecture document to reflect current implementation:
 
 ### For Regular Documentation Reviews
 ```
-Perform a quarterly review of all Architecture Hub documents:
+Perform a quarterly review of all Project Architecture  documents:
 1. Check each document for accuracy against current codebase
 2. Verify all links to other documentation are valid and relevant
 3. Ensure technical details (version numbers, config values) are up-to-date
@@ -104,7 +104,7 @@ Perform a quarterly review of all Architecture Hub documents:
 
 ### For Cross-Hub Consistency Checks
 ```
-Verify consistency between Architecture Hub and other documentation hubs:
+Verify consistency between Project Architecture  and other documentation hubs:
 1. Ensure architectural principles are reflected in Code Hub documentation
 2. Verify that workflow documentation aligns with architectural boundaries
 3. Check that AI context files reference correct architectural components
@@ -193,4 +193,4 @@ When generating or updating architecture documentation, follow these formats:
 - [Link to relevant Code Hub documentation]
 ```
 
-By following these prompts and guidelines, AI agents can effectively maintain the Architecture Hub as a reliable source of architectural truth for the Nexus platform.
+By following these prompts and guidelines, AI agents can effectively maintain the Project Architecture  as a reliable source of architectural truth for the Nexus platform.

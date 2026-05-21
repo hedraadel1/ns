@@ -76,10 +76,10 @@ The Agents Hub manages the lifecycle, skills, tasks, and tools of AI agents with
 - **Fault Tolerance**: Agent failures should not cascade to affect other system components
 
 ## Related Documentation
-- [Agent Model Specification](../01-Modules/Agents/01-Models.md)
-- [Agent Lifecycle Service](../01-Modules/Agents/02-Services.md)
-- [Agent API Endpoints](../01-Modules/Agents/03-Controllers.md)
-- [Agent Events](../01-Modules/Agents/04-Events.md)
-- [Agent Jobs](../01-Modules/Agents/05-Jobs.md)
-- [Workflow Hub](../02-Code-Hub/01-Backend/01-Modules/Workflows/) - For task orchestration
-- [Memory Hub](../02-Code-Hub/01-Backend/01-Modules/Memory/) - For agent context and learning
+- [Agent Model Specification](../01-Hubs/Agents/01-Models.md)
+- [Agent Lifecycle Service](../01-Hubs/Agents/02-Services.md)
+- [Agent API Endpoints](../01-Hubs/Agents/03-Controllers.md)
+- [Agent Events](../01-Hubs/Agents/04-Events.md)
+- [Agent Jobs](../01-Hubs/Agents/05-Jobs.md)
+- [Workflow Hub](../02-Project-Code/01-Backend/01-Hubs/Workflows/) - For task orchestration
+- [Memory Hub](../02-Project-Code/01-Backend/01-Hubs/Memory/) - For agent context and learning

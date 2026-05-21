@@ -146,7 +146,7 @@ Perform a monthly review of all Prompt Library files:
 ### For Cross-Hub Consistency Checks
 ```
 Verify consistency between Prompt Library and other documentation hubs:
-1. Ensure prompts produce code that follows Architecture Hub principles
+1. Ensure prompts produce code that follows Project Architecture  principles
 2. Verify that prompts respect Code Hub patterns
 3. Check that refactoring prompts improve workflow efficiency
 4. Confirm testing prompts support governance requirements

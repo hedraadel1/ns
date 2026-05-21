@@ -126,7 +126,7 @@ Perform a monthly review of all AI Context Hub documents:
 ### For Cross-Hub Consistency Checks
 ```
 Verify consistency between AI Context Hub and other documentation hubs:
-1. Ensure context aligns with architectural principles from Architecture Hub
+1. Ensure context aligns with architectural principles from Project Architecture 
 2. Verify that context reflects current code structure from Code Hub
 3. Check that system prompts reference correct workflows from Workflow Hub
 4. Confirm governance documentation influences context appropriately

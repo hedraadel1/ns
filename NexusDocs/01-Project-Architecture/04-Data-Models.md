@@ -71,10 +71,11 @@ The Nexus platform uses a relational database (MySQL 8.0+) with the following co
 ## AI Models Hub
 
 ### Core Tables
-- **ai_providers**: AI service providers (Gemini, OpenAI, Anthropic)
-- **ai_api_keys**: Encrypted API keys for providers
+- **ai_providers**: AI service providers (Gemini, OpenAI, Anthropic, Groq)
+- **ai_api_keys**: Encrypted API keys for providers (AES-256 encrypted)
 - **ai_models**: Available models from providers
 - **intent_routing**: Rules for routing requests based on intent
+- **usage_logs**: Token usage tracking for cost monitoring
 - **ai_requests**: Logs of AI requests made
 - **ai_responses**: Logs of AI responses received
 
@@ -82,8 +83,60 @@ The Nexus platform uses a relational database (MySQL 8.0+) with the following co
 - ai_providers 1:M ai_api_keys (a provider can have many API keys)
 - ai_providers 1:M ai_models (a provider offers many models)
 - ai_models 1:M ai_requests (a model can be used in many requests)
-- ai_requests 1:M ai_responses (a request can generate many responses - retries, etc.)
+- ai_api_keys 1:M ai_requests (keys used for requests)
 - intent_routing 1:M ai_requests (many requests can follow the same routing rule)
+- ai_requests 1:M ai_responses (a request can generate many responses - retries, etc.)
+- ai_providers 1:M usage_logs (usage tracked per provider)
+
+### Table Details
+
+#### ai_providers
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| name | string | Provider display name |
+| type | string | Provider type (openai, anthropic, gemini, groq) |
+| base_url | string | API base URL |
+| capabilities | JSON | Array of supported capabilities |
+| rate_limit | integer | Requests per minute |
+| is_active | boolean | Provider active status |
+| created_at | timestamp | Creation timestamp |
+| updated_at | timestamp | Update timestamp |
+
+#### ai_api_keys
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| provider_id | UUID | Foreign key to ai_providers |
+| encrypted_key | text | AES-256-GCM encrypted key |
+| key_hash | string | SHA-256 hash for lookup |
+| created_at | timestamp | Creation timestamp |
+| expires_at | timestamp | Optional expiration |
+| last_rotated_at | timestamp | Last rotation time |
+
+#### intent_routing
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| intent_pattern | string | Regex pattern for matching intents |
+| provider_id | UUID | Target provider |
+| model_name | string | Target model name |
+| priority | integer | Routing priority (higher = preferred) |
+| criteria | JSON | Additional routing criteria |
+| is_active | boolean | Rule active status |
+
+#### usage_logs
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| provider_id | UUID | Foreign key to provider |
+| model_name | string | Model used |
+| prompt_tokens | integer | Tokens in prompt |
+| completion_tokens | integer | Tokens in response |
+| total_tokens | integer | Total tokens |
+| cost | decimal | Calculated cost |
+| request_id | UUID | Reference to request |
+| created_at | timestamp | Log timestamp |
 
 ## Settings Hub
 
@@ -223,9 +276,10 @@ Due to the complexity of the full schema, relationship diagrams are available in
 - **Examples**: ck_agents_status_valid, ck_settings_key_unique
 
 ## Related Documentation
-- [High-Level Overview](../01-Architecture-Hub/01-High-Level-Overview.md)
-- [System Requirements](../01-Architecture-Hub/02-System-Requirements.md)
-- [Technical Specifications](../01-Architecture-Hub/03-Technical-Specifications.md)
+- [High-Level Overview](./01-High-Level-Overview.md)
+- [System Requirements](./02-System-Requirements.md)
+- [Technical Specifications](./03-Technical-Specifications.md)
+- [AI Models Hub](./05-AI-Models-Hub.md) - Detailed AI Models Hub documentation
 - [Existing DB Schema](../Docs/DB_SCHEMA.md) (current database schema documentation)
-- [Code Hub](../02-Code-Hub/) - Model implementations
+- [Code Hub](../02-Project-Code/) - Model implementations
 - [Migration Files](../database/migrations/) - Schema evolution history

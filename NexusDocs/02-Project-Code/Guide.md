@@ -210,7 +210,7 @@ Perform a monthly review of all Code Hub documents:
 ### For Cross-Hub Consistency Checks
 ```
 Verify consistency between Code Hub and other documentation hubs:
-1. Ensure code documentation reflects architectural principles from Architecture Hub
+1. Ensure code documentation reflects architectural principles from Project Architecture 
 2. Verify that workflow documentation aligns with code-level implementation traces
 3. Check that AI context files reference correct code components
 4. Confirm governance documentation enforces coding standards reflected in code docs

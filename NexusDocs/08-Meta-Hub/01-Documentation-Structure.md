@@ -18,9 +18,9 @@ NexusDocs/
 │   ├── 04-Data-Models.md             # Entity relationships, database schema overview
 │   └── Guide.md                      # AI prompts for analyzing and updating architecture documentation
 │
-├── 02-Code-Hub/
+├── 02-Project-Code/
 │   ├── 01-Backend/
-│   │   ├── 01-Modules/               # Documentation organized by hub/module
+│   │   ├── 01-Hubs/               # Documentation organized by hub/module
 │   │   │   ├── Agents/
 │   │   │   │   ├── README.md         # Module overview and responsibilities
 │   │   │   │   ├── 01-Models.md      # Agent, AgentSkill, AgentTask, AgentTool models
@@ -111,13 +111,13 @@ NexusDocs/
 
 - **Guide.md**: AI prompts for analyzing architecture documents, generating new architecture documentation, and maintaining consistency with the codebase.
 
-### 02-Code-Hub/
+### 02-Project-Code/
 
 **Purpose**: Granular code documentation organized by backend and frontend concerns
 
 #### 01-Backend/
 
-- **01-Modules/**: Documentation for each of the 8 hubs, organized into:
+- **01-Hubs/**: Documentation for each of the 8 hubs, organized into:
   - README.md: Module overview and responsibilities
   - 01-Models.md: Eloquent model documentation
   - 02-Services.md: Service class documentation

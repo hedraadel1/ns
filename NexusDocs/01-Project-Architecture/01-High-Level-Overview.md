@@ -71,5 +71,5 @@ Data Layer (Repositories, Database, Cache)
 - [System Requirements](./02-System-Requirements.md)
 - [Technical Specifications](./03-Technical-Specifications.md)
 - [Data Models](./04-Data-Models.md)
-- [Code Hub](../02-Code-Hub/) - Detailed code documentation
+- [Code Hub](../02-Project-Code/) - Detailed code documentation
 - [Workflow Hub](../03-Workflow-Hub/) - Business processes and execution traces

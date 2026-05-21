@@ -19,7 +19,7 @@ NexusDocs provides comprehensive, hierarchical documentation organized into spec
 NexusDocs/
 ├── 00-Project-Root/          # Foundational documents
 ├── 01-Architecture-Hub/      # System architecture and specifications
-├── 02-Code-Hub/              # Detailed code documentation
+├── 02-Project-Code/              # Detailed code documentation
 ├── 03-Workflow-Hub/          # Business logic, algorithms, and execution traces
 ├── 04-AI-Context-Hub/        # Files for AI agent context and prompting
 ├── 05-Governance-Hub/        # Testing, deployment, and coding standards
@@ -33,7 +33,7 @@ NexusDocs/
 ### For Human Developers
 1. Start with `00-Project-Root/README.md` for an overview
 2. Refer to `01-Architecture-Hub/` for system design understanding
-3. Use `02-Code-Hub/` when working with specific modules or components
+3. Use `02-Project-Code/` when working with specific Hubs or components
 4. Consult `03-Workflow-Hub/` for understanding business processes
 5. Follow guidelines in `05-Governance-Hub/` for coding standards and testing
 6. Use `06-Prompt-Library-Hub/` when interacting with AI agents

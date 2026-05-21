@@ -131,7 +131,7 @@ Perform a quarterly review of all Workflow Hub documents:
 ### For Cross-Hub Consistency Checks
 ```
 Verify consistency between Workflow Hub and other documentation hubs:
-1. Ensure business logic aligns with architectural principles from Architecture Hub
+1. Ensure business logic aligns with architectural principles from Project Architecture 
 2. Verify that workflows are implemented correctly in Code Hub
 3. Check that AI context files reference correct workflow components
 4. Confirm governance documentation covers workflow testing
